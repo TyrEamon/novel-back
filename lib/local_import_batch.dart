@@ -6,16 +6,20 @@ import 'local_book_series.dart';
 
 typedef LocalImportFailure = ({String name, String message});
 
+typedef LocalImportNotice = ({String name, String message});
+
 class LocalImportReport {
   const LocalImportReport({
     required this.bookIds,
     required this.added,
     required this.existing,
     this.failures = const [],
+    this.notices = const [],
   });
   final List<int> bookIds;
   final int added, existing;
   final List<LocalImportFailure> failures;
+  final List<LocalImportNotice> notices;
   String get summary => [
     if (added > 0) '已导入 $added 本',
     if (existing > 0) '$existing 本已在书库',
@@ -129,3 +133,18 @@ List<LocalImportGroup> localImportGroups(
   }
   return groups;
 }
+
+/// Stable entry point used by the 0.5.5 importer. The published 0.4.0 engine
+/// had no document-staging parameter, so it is accepted and not used.
+Future<LocalImportReport> importLocalDocuments({
+  required List<BookDocumentSelection> selections,
+  BookDocuments? documents,
+  required LocalBookStore books,
+  required Future<Novel> Function(String name, String path) importFile,
+  void Function(int completed, int total)? onProgress,
+}) => importLocalBatch(
+  selections: selections,
+  books: books,
+  importFile: importFile,
+  onProgress: onProgress,
+);

@@ -36,8 +36,9 @@ Future<LocalScanResult> scanLocalBooks({
   required Set<String> selectedTokens,
   required Future<LocalImportReport> Function(BookDocumentSelection source)
   importSource,
-  required bool Function() current,
+  bool Function()? current,
   void Function(int done, int total)? onProgress,
+  bool linkText = false,
 }) async {
   final selected = snapshot.books
       .where((entry) => selectedTokens.contains(entry.token))
@@ -48,7 +49,7 @@ Future<LocalScanResult> scanLocalBooks({
   onProgress?.call(0, selected.length);
   try {
     for (final entry in selected) {
-      if (!current()) break;
+      if (!(current?.call() ?? true)) break;
       BookDocumentSelection? staged;
       try {
         staged = await documents.stageScanBook(entry.token);
