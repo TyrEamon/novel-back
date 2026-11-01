@@ -18,7 +18,10 @@ class ListeningEnhancement {
 
   ListeningEnhancementPreference get preference => _preference;
 
-  Future<void> configure(ListeningEnhancementPreference value) async {
+  Future<void> configure(
+    ListeningEnhancementPreference value, {
+    int? audioSessionId,
+  }) async {
     _preference = value;
   }
 

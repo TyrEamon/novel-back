@@ -142,6 +142,9 @@ Future<LocalImportReport> importLocalDocuments({
   required LocalBookStore books,
   required Future<Novel> Function(String name, String path) importFile,
   void Function(int completed, int total)? onProgress,
+  Future<Novel> Function(BookDocumentSelection selected)? importSelection,
+  Object? releaseSources,
+  Object? onCleanupFailed,
 }) => importLocalBatch(
   selections: selections,
   books: books,

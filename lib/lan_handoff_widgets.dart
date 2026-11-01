@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import 'catalog.dart';
 import 'lan_reading_sync.dart';
 
 /// Placeholder handoff monitor. The unpublished original watched for peer
@@ -23,4 +24,23 @@ class LanHandoffMonitor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => child;
+}
+
+/// Placeholder "send this book to a nearby device" sheet.
+class LanSendBookSheet extends StatelessWidget {
+  const LanSendBookSheet({
+    super.key,
+    this.sync,
+    this.book,
+    this.position,
+    this.reduceMotion = false,
+  });
+
+  final LanReadingSync? sync;
+  final Novel? book;
+  final Object? position;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

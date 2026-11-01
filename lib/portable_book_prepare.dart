@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:ui' show RootIsolateToken;
 
 typedef PreparedBookDocument = ({String name, String? path, String? error});
 
@@ -39,4 +40,8 @@ class PortableBookPreparer {
 
   Future<List<PreparedBookDocument>> prepare(String name, String path) =>
       convert(name, path);
+
+  /// Discard staged copies once the importer has consumed them. The scratch
+  /// directory is recreated on the next run, so nothing else needs cleanup.
+  Future<void> releasePaths(Iterable<String> paths) async {}
 }

@@ -49,6 +49,28 @@ abstract final class ChineseText {
     return lexicon.convert(source);
   }
 
+  /// Character/phrase normalization for matching only. Never used for display
+  /// or reader text, which would shift selection offsets.
+  static String searchKey(String source) {
+    if (source.isEmpty || _lexicons.isEmpty) return source;
+    return _lexicons['standard']?.convert(source) ?? source;
+  }
+
+  /// Query variants for cross-script matching. The user's own word stays first
+  /// so an exact catalogue hit is never displaced by a conversion artifact.
+  static Future<List<String>> searchVariants(String query) async {
+    final original = query.trim();
+    if (original.isEmpty) return const [];
+    await prepare();
+    final simplified = searchKey(original);
+    return {
+      original,
+      simplified,
+      _lexicons['TW']?.convert(simplified) ?? simplified,
+      _lexicons['HK']?.convert(simplified) ?? simplified,
+    }.toList(growable: false);
+  }
+
   static Future<List<String>> readerParagraphs(
     List<String> paragraphs,
     Locale locale,

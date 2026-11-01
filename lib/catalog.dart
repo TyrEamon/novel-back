@@ -18,6 +18,11 @@ class Novel {
     this.lastUpdate,
     this.chapterCount = 0,
     this.navigation,
+    this.sourceId,
+    this.bookUrl,
+    this.tocUrl,
+    this.authorUrl,
+    this.tagUrls = const {},
   });
 
   final int id;
@@ -32,6 +37,15 @@ class Novel {
   final String? lastUpdate;
   final int chapterCount;
   final BookNavigation? navigation;
+
+  /// Source binding for books that came from a user-imported book source.
+  /// Local books and pre-0.4 snapshots leave these empty, and a numeric book id
+  /// never implies a provider because different sources reuse ids.
+  final String? sourceId;
+  final String? bookUrl;
+  final String? tocUrl;
+  final String? authorUrl;
+  final Map<String, String> tagUrls;
 
   /// Public directory rows can target any preserved reading section. A resource
   /// missing from the authored TOC remains reachable by normal page turns.
@@ -184,6 +198,11 @@ class Novel {
     'lastUpdate': lastUpdate,
     'chapterCount': chapters.isNotEmpty ? chapters.length : chapterCount,
     if (navigation != null) 'navigation': navigation!.toJson(),
+    if (sourceId != null) 'sourceId': sourceId,
+    if (bookUrl != null) 'bookUrl': bookUrl,
+    if (tocUrl != null) 'tocUrl': tocUrl,
+    if (authorUrl != null) 'authorUrl': authorUrl,
+    if (tagUrls.isNotEmpty) 'tagUrls': tagUrls,
   };
 
   factory Novel.fromSnapshot(Map<String, dynamic> value) {
@@ -212,6 +231,20 @@ class Novel {
       navigation: value['navigation'] == null
           ? null
           : BookNavigation.fromJson(value['navigation']),
+      sourceId: value['sourceId'] is String ? value['sourceId'] as String : null,
+      bookUrl: value['bookUrl'] is String ? value['bookUrl'] as String : null,
+      tocUrl: value['tocUrl'] is String ? value['tocUrl'] as String : null,
+      authorUrl: value['authorUrl'] is String
+          ? value['authorUrl'] as String
+          : null,
+      tagUrls: switch (value['tagUrls']) {
+        final Map<Object?, Object?> map => {
+          for (final entry in map.entries)
+            if (entry.key is String && entry.value is String)
+              entry.key as String: entry.value as String,
+        },
+        _ => const {},
+      },
     );
   }
 }
@@ -235,6 +268,7 @@ class NovelChapter {
     this.id = 0,
     this.volumeId = 0,
     this.volumeTitle = '',
+    this.url,
   });
 
   final String title;
@@ -242,6 +276,9 @@ class NovelChapter {
   final int id;
   final int volumeId;
   final String volumeTitle;
+
+  /// Provider chapter URL, kept so a source can refetch the body later.
+  final String? url;
 }
 
 /// Contiguous volume ranges keep the original, flat chapter indices stable.

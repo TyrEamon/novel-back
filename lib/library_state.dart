@@ -2423,6 +2423,43 @@ class LibraryState extends ChangeNotifier {
     });
   }
 
+  /// Merge an imported source shelf in one journaled write. Metadata and
+  /// membership arrive together; reading positions/bookmarks are untouched.
+  Future<void> addShelfBooks(Iterable<Novel> values) async {
+    final books = {
+      for (final book in values)
+        if (book.id > 0 && !isLocalBook(book.id)) book.id: book,
+    };
+    if (_restoreBarrier case final barrier?) {
+      await barrier.future;
+      return addShelfBooks(books.values);
+    }
+    await _queuePositionWrite(() async {
+      final additions = books.keys.toSet().difference(_shelf);
+      final snapshots = {
+        for (final book in books.values)
+          if (!identical(_persistedNovels[book.id], book))
+            'novel_meta_${book.id}': jsonEncode(book.toSnapshot()),
+      };
+      if (additions.isEmpty && snapshots.isEmpty) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _commitLibraryRecords({
+        if (additions.isNotEmpty)
+          'shelf': {..._shelf, ...additions}.map((id) => '$id').toList(),
+        for (final id in additions) 'shelf_added_$id': now,
+        ...snapshots,
+      });
+      _shelf.addAll(additions);
+      _known.addAll(books);
+      _persistedNovels.addAll(books);
+      for (final id in additions) {
+        _added[id] = now;
+        _shelfRevisions[id] = shelfRevision(id) + 1;
+      }
+      if (!_disposed) notifyListeners();
+    });
+  }
+
   Future<void> applyCloudShelf({
     required Set<int> add,
     required Set<int> remove,

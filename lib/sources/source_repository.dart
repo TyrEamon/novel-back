@@ -823,6 +823,7 @@ class SourceNovelRepository extends ChangeNotifier
     int page = 1,
     bool refresh = false,
     bool Function()? current,
+    TagProgressCallback? onProgress,
   }) async {
     return _relatedSearch(
       tag,
