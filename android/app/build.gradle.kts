@@ -18,6 +18,14 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    // hutool ships a duplicate META-INF/INDEX.LIST across its modules; the
+    // book-source engine only needs the classes.
+    packaging.resources.excludes.add("META-INF/INDEX.LIST")
+    packaging.resources.excludes.add("META-INF/DEPENDENCIES")
+    packaging.resources.excludes.add("META-INF/LICENSE*")
+    packaging.resources.excludes.add("META-INF/NOTICE*")
+    packaging.resources.excludes.add("META-INF/*.kotlin_module")
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
