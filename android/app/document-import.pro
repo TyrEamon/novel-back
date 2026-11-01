@@ -26,3 +26,16 @@
 -keep class com.jayway.jsonpath.** { *; }
 -keep class cn.wanghaomiao.** { *; }
 -keep class cn.hutool.** { *; }
+
+# JsonPath picks its JSON provider at runtime; every optional provider (Jackson,
+# JsonOrg, JsonSmart, Groovy, SLF4J bridges) is absent on Android and unused.
+-dontwarn com.jayway.jsonpath.**
+-dontwarn com.fasterxml.jackson.**
+-dontwarn org.codehaus.groovy.**
+-dontwarn groovy.**
+-dontwarn net.minidev.**
+-dontwarn org.json.**
+-dontwarn org.slf4j.**
+-dontwarn org.apache.commons.logging.**
+-dontwarn java.lang.management.**
+-dontwarn jakarta.**
