@@ -92,7 +92,7 @@ Future<void> main() async {
   if (LocalPlatform.fileActions) {
     final sources = await SourceStore.forApp();
     await sources.load();
-    sources.reserveBooks(state.knownNovels);
+    sources.reserveBooks(state.shelf.map(state.cachedNovel).whereType<Novel>());
     remote = SourceNovelRepository(store: sources, legacyBook: state.cachedNovel);
   }
   final repository = LocalPlatform.fileActions
