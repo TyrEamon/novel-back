@@ -25,4 +25,11 @@
     <style name="NormalTheme" parent="SystemBarsTheme">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+<!-- Transparent host for the in-app browser sheet used by book-source logins. -->
+    <style name="SourceBrowserHostTheme" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:colorAccent">#888888</item>
+    </style>
 </resources>

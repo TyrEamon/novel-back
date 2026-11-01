@@ -48,6 +48,21 @@ internal class BookArchiveImport(
         }
     }
 
+    /** SAF documents arrive as a reopenable descriptor; stage them first so the
+     * regular file-backed path (and its size limits) stays the only pipeline. */
+    fun prepare(name: String, input: BookDocumentInput): List<Map<String, String>> {
+        input.file?.let { return prepare(name, it) }
+        require(input.length() > 0) { "文件为空，请重新下载原书" }
+        require(input.length() <= limit(name)) {
+            "单个 ${name.substringAfterLast('.').uppercase()} 不能超过 ${limit(name) / (1024 * 1024)} MiB"
+        }
+        val staged = temporary()
+        try {
+            input.inputStream().use { stream -> staged.outputStream().use { stream.copyTo(it) } }
+            return prepare(name, staged)
+        } catch (error: Exception) { staged.delete(); throw error }
+    }
+
     private fun temporary() = File.createTempFile("import-", ".source", root)
 
     private fun unpack(source: File): List<Map<String, String>> {

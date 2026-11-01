@@ -149,6 +149,19 @@ class BookFolderScanner(private val context: Context) {
         } catch (error: Exception) { target.delete(); throw error }
     }
 
+    /** Link the discovered book in place instead of copying it into the import
+     * root: the reader then opens the granted document through BookTextLinks. */
+    fun link(token: String, links: BookTextLinks, root: File, copy: (Uri, File, Long) -> Unit): Map<String, String> {
+        val node = entries[token] ?: error("扫描结果已过期，请重新扫描")
+        val uri = if (allStorage()) null else tree() ?: error("请先选择书籍文件夹")
+        val source = if (allStorage()) {
+            check(canReadAll()) { "共享存储权限已关闭" }
+            Uri.fromFile(File(node.id))
+        } else DocumentsContract.buildDocumentUriUsingTree(uri!!, node.id)
+        require(node.size <= BookArchiveImport.limit(node.name)) { "书籍文件过大" }
+        return mapOf("name" to node.name, "reference" to links.remember(source, uri))
+    }
+
     fun markImported(token: String) {
         val node = entries[token] ?: error("扫描结果已过期，下次扫描会再次检查")
         val imported = importedIndex ?: saved().also { importedIndex = it }
