@@ -11,3 +11,18 @@
 -dontwarn org.osgi.framework.**
 -dontwarn aQute.bnd.annotation.**
 -dontwarn edu.umd.cs.findbugs.annotations.**
+
+# The book-source rule engine runs user-imported legado rules through the
+# bundled Rhino runtime; its desktop-only converters reference JDK beans and
+# XML APIs that Android does not ship, and R8 must not prune the script host.
+-dontwarn java.beans.**
+-dontwarn javax.**
+-dontwarn org.w3c.dom.**
+-dontwarn org.xml.sax.**
+-keep class org.htmlunit.corejs.** { *; }
+-keep class org.mewx.wenku8_flutter.legado.** { *; }
+-keep class org.mewx.wenku8_flutter.sourceinternal.** { *; }
+-keep class org.mewx.wenku8_flutter.BookSourceEngine { *; }
+-keep class com.jayway.jsonpath.** { *; }
+-keep class cn.wanghaomiao.** { *; }
+-keep class cn.hutool.** { *; }
