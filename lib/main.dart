@@ -27,6 +27,9 @@ import 'network_status.dart';
 import 'offline_repository.dart';
 import 'pages.dart';
 import 'performance_preferences.dart';
+import 'sources/source_host_bridge.dart';
+import 'sources/source_repository.dart';
+import 'sources/source_store.dart';
 import 'haptic_preferences.dart';
 import 'touch_sampling.dart';
 import 'updates/app_updates.dart';
@@ -82,7 +85,16 @@ Future<void> main() async {
   final WenkuAccount? account = LocalPlatform.fileActions
       ? WenkuAccount()
       : null;
-  const remote = LegacyWenkuRepository();
+  const legacyRemote = LegacyWenkuRepository();
+  // Wenku8 stays the account/publication transport; user book sources take over
+  // search, discovery and reading, so both live side by side.
+  NovelRepository remote = legacyRemote;
+  if (LocalPlatform.fileActions) {
+    final sources = await SourceStore.forApp();
+    await sources.load();
+    sources.reserveBooks(state.knownNovels);
+    remote = SourceNovelRepository(store: sources, legacyBook: state.cachedNovel);
+  }
   final repository = LocalPlatform.fileActions
       ? await openApplicationLibrary(remote: remote, network: network)
       : const DemoNovelRepository();
@@ -98,7 +110,7 @@ Future<void> main() async {
           account: account,
           // The authenticated novellist response already contains book metadata.
           // Reuse its adapter, pagination and the existing account session.
-          publications: remote as PublicationCatalog,
+          publications: legacyRemote as PublicationCatalog,
           shelfSync: WenkuShelfSync(
             account: account,
             library: state,
@@ -186,6 +198,11 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
   final _navigator = GlobalKey<NavigatorState>();
   final _home = GlobalKey<HomeShellState>();
   final _readerHandoff = ReaderHandoffNavigation();
+  late final _sourceHost = SourceHostBridge(
+    state,
+    repository: sourceRepositoryOf(repository),
+    navigatorKey: _navigator,
+  );
   late ReadingWidgetController _readingWidgets =
       ReadingWidgetController.forState(state);
   late ReadingWidgetCards _widgetCards = ReadingWidgetCards.forState(state);
@@ -208,6 +225,7 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
     _orientationChanged();
     _startupReadingConsumed = !state.openRecentOnLaunch;
     _updateNavigation.addListener(_queueStartupReading);
+    _sourceHost.attach();
     updates?.addListener(_queueStartupReading);
     if (!_startupReadingConsumed) unawaited(_prepareStartupReading());
     unawaited(_prepareLanSync());
@@ -656,6 +674,7 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
     _updateNavigation.dispose();
     updates?.removeListener(_queueStartupReading);
     _readerHandoff.dispose();
+    _sourceHost.dispose();
     _lanSync?.dispose();
     _readingWidgets.dispose();
     ReadingWidgetBridge.stop();
@@ -681,7 +700,7 @@ class _NovelAppState extends State<NovelApp> with WidgetsBindingObserver {
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           localeResolutionCallback: (locale, _) =>
               chineseLocale(state.language.locale ?? locale),
-          navigatorObservers: [_updateNavigation, _readerHandoff],
+          navigatorObservers: [_updateNavigation, _readerHandoff, _sourceHost],
           debugShowCheckedModeBanner: false,
           scrollBehavior: const NovelScrollBehavior(),
           theme: _theme(Brightness.light),

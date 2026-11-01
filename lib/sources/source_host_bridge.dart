@@ -11,10 +11,17 @@ import 'source_fields.dart';
 
 /// Script UI uses existing app notices/sheets, never a separate design system.
 class SourceHostBridge extends NavigatorObserver with WidgetsBindingObserver {
-  SourceHostBridge(this.state, {this.repository});
+  SourceHostBridge(
+    this.state, {
+    this.repository,
+    GlobalKey<NavigatorState>? navigatorKey,
+  }) : navigatorKey = navigatorKey ?? GlobalKey<NavigatorState>();
   final LibraryState state;
   final SourceNovelRepository? repository;
-  final navigatorKey = GlobalKey<NavigatorState>();
+
+  /// Shares the host MaterialApp key so script-driven routes land on the live
+  /// navigator instead of an unattached one.
+  final GlobalKey<NavigatorState> navigatorKey;
   final _routes = <Route<dynamic>>[];
   Future<void> _queue = Future.value();
   final _cancelled = <String>{};

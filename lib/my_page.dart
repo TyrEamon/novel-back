@@ -11,6 +11,8 @@ import 'feature_pages.dart';
 import 'library_state.dart';
 import 'offline_repository.dart';
 import 'pages.dart' show SettingsPage;
+import 'sources/source_pages.dart';
+import 'sources/source_repository.dart';
 import 'ui_notifiers.dart';
 import 'updates/app_updates.dart';
 import 'updates/update_page.dart';
@@ -169,6 +171,26 @@ class MyPage extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 24),
+              if (sourceRepositoryOf(repository) case final sources?) ...[
+                AnimatedBuilder(
+                  animation: sources.store,
+                  builder: (context, _) => FeatureEntry(
+                    key: const ValueKey('my-sources'),
+                    title: '书源管理',
+                    subtitle: sources.store.sources.isEmpty
+                        ? '导入或创建自己的书源'
+                        : '${sources.store.enabled.length} 个已启用 · ${sources.store.sources.length} 个书源',
+                    icon: CupertinoIcons.square_stack,
+                    onTap: () => openSourceManager(
+                      context,
+                      sources,
+                      library: state,
+                      reduceMotion: state.reduceMotion,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               FeatureEntry(
                 key: const ValueKey('my-statistics'),
                 title: '统计',
