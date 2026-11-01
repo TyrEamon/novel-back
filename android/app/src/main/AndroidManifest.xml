@@ -101,6 +101,17 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/reading_widget_large" />
         </receiver>
         <service
+            android:name=".SourceWebService"
+            android:process=":book_sources"
+            android:exported="false" />
+        <activity
+            android:name=".SourceLoginActivity"
+            android:process=":book_sources"
+            android:exported="false"
+            android:theme="@style/NormalTheme"
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|uiMode"
+            android:windowSoftInputMode="adjustResize" />
+        <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="true">

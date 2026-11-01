@@ -99,6 +99,18 @@ dependencies {
     implementation("org.jsoup:jsoup:1.23.2")
     implementation("org.commonmark:commonmark:0.30.1")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    // Book-source rule engine (ported from the 0.4.0 legado runtime).
+    implementation("org.htmlunit:htmlunit-core-js:5.3.0-legado.4")
+    implementation("com.jayway.jsonpath:json-path:3.0.0")
+    implementation("com.google.code.gson:gson:2.14.0")
+    implementation("cn.wanghaomiao:JsoupXpath:2.5.3")
+    implementation("org.apache.commons:commons-text:1.13.1")
+    implementation("cn.hutool:hutool-crypto:5.8.22")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.webkit:webkit:1.14.0")
+    implementation("com.google.android.material:material:1.14.0")
+    implementation("me.zhanghai.android.libarchive:library:1.1.6")
+    implementation("com.github.liuyueyi.quick-chinese-transfer:quick-transfer-core:0.2.17")
     // Keep the media host classes available to the app's shared-engine wiring.
     implementation("androidx.media:media:1.7.0")
 }
