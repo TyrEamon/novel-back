@@ -39,22 +39,32 @@ jobs:
       - name: Restore Gradle wrapper (omitted from the published snapshot)
         run: |
           set -euo pipefail
-          # Generate the wrapper in an isolated directory. Running `gradle wrapper`
-          # inside android/ makes the runner's stock Gradle parse this project's
-          # AGP 8.11.1 / Kotlin 2.2.20 build scripts first, which fails whenever the
-          # preinstalled Gradle major differs from the wrapper's 8.14.
-          mkdir -p /tmp/wrapgen && cd /tmp/wrapgen
-          if command -v gradle >/dev/null 2>&1; then
-            gradle wrapper --gradle-version 8.14 --distribution-type all
+          DEST="$GITHUB_WORKSPACE/android"
+          SRC="$FLUTTER_ROOT/bin/cache/artifacts/gradle_wrapper"
+          if [ -f "$SRC/gradle/wrapper/gradle-wrapper.jar" ]; then
+            # Preferred: reuse the wrapper the Flutter SDK ships, so the runner's
+            # stock Gradle major never has to parse this project's build scripts.
+            echo "Using the gradle wrapper bundled with the Flutter SDK"
+            cp -f "$SRC/gradlew" "$SRC/gradlew.bat" "$DEST/"
+            cp -f "$SRC/gradle/wrapper/gradle-wrapper.jar" "$DEST/gradle/wrapper/"
           else
-            curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.14-bin.zip
-            unzip -q /tmp/gradle.zip -d /tmp
-            /tmp/gradle-8.14/bin/gradle wrapper --gradle-version 8.14 --distribution-type all
+            # Gradle 9.x refuses to run `wrapper` in a directory that holds no
+            # build file ("does not contain a Gradle build"), so seed one first.
+            mkdir -p /tmp/wrapgen && cd /tmp/wrapgen
+            printf '// placeholder so `gradle wrapper` accepts this directory\n' > settings.gradle.kts
+            if command -v gradle >/dev/null 2>&1; then
+              gradle wrapper --gradle-version 8.14 --distribution-type all
+            else
+              curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.14-bin.zip
+              unzip -q /tmp/gradle.zip -d /tmp
+              /tmp/gradle-8.14/bin/gradle wrapper --gradle-version 8.14 --distribution-type all
+            fi
+            cp -f /tmp/wrapgen/gradlew /tmp/wrapgen/gradlew.bat "$DEST/"
+            cp -f /tmp/wrapgen/gradle/wrapper/gradle-wrapper.jar "$DEST/gradle/wrapper/"
           fi
-          cp -f /tmp/wrapgen/gradlew /tmp/wrapgen/gradlew.bat "$GITHUB_WORKSPACE/android/"
-          cp -rf /tmp/wrapgen/gradle/. "$GITHUB_WORKSPACE/android/gradle/"
-          chmod +x "$GITHUB_WORKSPACE/android/gradlew"
-          ls -l "$GITHUB_WORKSPACE/android/gradlew" "$GITHUB_WORKSPACE/android/gradle/wrapper/"
+          # The project's own gradle-wrapper.properties (pins Gradle 8.14) stays put.
+          chmod +x "$DEST/gradlew"
+          ls -l "$DEST/gradlew" "$DEST/gradle/wrapper/"
 
       - name: Install NDK 28.2.13676358 and CMake 3.22.1
         run: |
