@@ -151,7 +151,7 @@ class BookFolderScanner(private val context: Context) {
 
     /** Link the discovered book in place instead of copying it into the import
      * root: the reader then opens the granted document through BookTextLinks. */
-    fun link(token: String, links: BookTextLinks, root: File, copy: (Uri, File, Long) -> Unit): Map<String, String> {
+    internal fun link(token: String, links: BookTextLinks, root: File, copy: (Uri, File, Long) -> Unit): Map<String, String> {
         val node = entries[token] ?: error("扫描结果已过期，请重新扫描")
         val uri = if (allStorage()) null else tree() ?: error("请先选择书籍文件夹")
         val source = if (allStorage()) {
