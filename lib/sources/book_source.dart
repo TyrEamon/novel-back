@@ -15,7 +15,10 @@ String sourceAuthorName(String raw) => raw
 class BookSource {
   BookSource(Map<String, dynamic> json)
     : data = Map.unmodifiable(json),
-      homeSections = _readHomeSections(json['homeSections']) {
+      homeSections = _readHomeSections(
+        json['homeSections'],
+        json['exploreUrl'],
+      ) {
     if (name.isEmpty || key.isEmpty) {
       throw const FormatException('书源缺少名称或 bookSourceUrl');
     }
@@ -123,8 +126,13 @@ class SourceFailure implements Exception {
   String toString() => message;
 }
 
-List<SourceHomeSection> _readHomeSections(dynamic raw) {
-  if (raw == null) return const [];
+/// How many derived blocks one source may contribute. A long tail of entries
+/// would fire as many first-page requests as it has categories, so the rest
+/// stays behind the discovery chooser.
+const _derivedSectionLimit = 6;
+
+List<SourceHomeSection> _readHomeSections(dynamic raw, dynamic exploreUrl) {
+  if (raw == null) return _deriveHomeSections(exploreUrl);
   if (raw is! List) throw const FormatException('首页栏目应为列表');
   final ids = <String>{};
   final result = <SourceHomeSection>[];
@@ -135,6 +143,29 @@ List<SourceHomeSection> _readHomeSections(dynamic raw) {
     );
   }
   return List.unmodifiable(result);
+}
+
+/// Most imported sources describe discovery as a list of `名称::地址` lines
+/// instead of the private `homeSections` field. Lifting the first few entries
+/// into blocks gives them the same multi-block home feed, while everything
+/// beyond the limit stays reachable from the source's own entry list.
+List<SourceHomeSection> _deriveHomeSections(dynamic exploreUrl) {
+  if (exploreUrl is! String || exploreUrl.trim().isEmpty) return const [];
+  final entries = <(String, String)>[];
+  for (final line in const LineSplitter().convert(exploreUrl)) {
+    final parts = line.split('::');
+    if (parts.length < 2) continue;
+    final title = parts.first.trim();
+    final url = parts[1].trim();
+    if (title.isEmpty || url.isEmpty) continue;
+    if (entries.any((e) => e.$1 == title)) continue;
+    entries.add((title, url));
+  }
+  if (entries.length < 2) return const [];
+  return List.unmodifiable([
+    for (final (index, entry) in entries.take(_derivedSectionLimit).indexed)
+      SourceHomeSection(id: 'explore-$index', title: entry.$1, url: entry.$2),
+  ]);
 }
 
 /// One block of a source's home feed, e.g. 热门 / 新书 / 完本.

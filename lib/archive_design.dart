@@ -157,10 +157,16 @@ class ArchiveSection extends StatelessWidget {
     required this.title,
     required this.code,
     this.subtitle = '',
+    this.moreKey,
+    this.onMore,
   });
   final String title;
   final String code;
   final String subtitle;
+
+  /// Optional action living on the title row, e.g. opening a full section list.
+  final Key? moreKey;
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) => LibraryReflowPart(
@@ -208,14 +214,42 @@ class ArchiveSection extends StatelessWidget {
         ArchivePart(
           start: .16,
           end: .82,
-          child: AppText(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              height: 1.25,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -.3,
-            ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: AppText(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.3,
+                  ),
+                ),
+              ),
+              if (onMore != null) ...[
+                const SizedBox(width: 10),
+                InkWell(
+                  key: moreKey,
+                  onTap: onMore,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 6,
+                    ),
+                    child: AppText(
+                      '查看更多',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         if (subtitle.isNotEmpty) ...[
