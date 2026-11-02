@@ -323,7 +323,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             var anyMore = false
             templates.forEach { line ->
                 val part = bookListing(line, rules, inferNavigation)
-                merged += (part["items"] as? List<Any?>).orEmpty()
+                merged.addAll((part["items"] as? List<Any?>).orEmpty())
                 if (firstPageUrl.isEmpty()) firstPageUrl = part["pageUrl"]?.toString().orEmpty()
                 if (firstNextUrl == null) firstNextUrl = part["nextUrl"]?.toString()
                 if (part["hasMore"] == true) anyMore = true
