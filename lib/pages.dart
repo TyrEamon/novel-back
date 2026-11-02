@@ -39,6 +39,8 @@ import 'book_categories.dart';
 import 'bookshelf_scope.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
+import 'sources/source_pages.dart';
+import 'sources/source_repository.dart';
 import 'blocked_tags_controls.dart';
 import 'catalog.dart';
 import 'glass_dock.dart';
@@ -1344,7 +1346,7 @@ class DiscoverPage extends StatelessWidget {
 
   Widget _categoryHeader(BuildContext context, {int? count}) =>
       BookCollectionRegionToolbar(
-        title: '发现',
+        title: sourceRepositoryOf(repository)?.discoveryTitle ?? '发现',
         category: _lowerCategory,
         count: count ?? (feed?.items ?? books).length,
         categoryKey: const ValueKey('discover-category'),
@@ -1365,6 +1367,15 @@ class DiscoverPage extends StatelessWidget {
       );
 
   Future<void> _chooseSort(BuildContext context) async {
+    if (sourceRepositoryOf(repository) case final sources?) {
+      await chooseSourceDiscovery(
+        context,
+        sources,
+        reduceMotion: state.reduceMotion,
+      );
+      if (context.mounted) await feed?.refresh();
+      return;
+    }
     final features = WenkuFeaturesScope.maybeOf(context);
     final selected = await showJellySheet<DiscoverySelection>(
       context: context,
