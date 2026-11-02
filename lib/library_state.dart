@@ -538,6 +538,8 @@ class LibraryState extends ChangeNotifier {
         ['local', 'cached', 'online'].contains(_prefs.get('shelfSourceFilter'))
         ? _prefs.get('shelfSourceFilter') as String
         : 'all';
+    _shelfPlatform = _prefs.get('shelfPlatform') as String? ?? 'all';
+    _shelfLocation = _prefs.get('shelfLocation') == 'cloud' ? 'cloud' : 'local';
     _adaptWhenOffline = _prefs.get('adaptWhenOffline') != false;
     _localReaderMode = _prefs.get('localReaderMode') == true;
     _directReadingPages = ReadingEntry.decode(
@@ -754,6 +756,8 @@ class LibraryState extends ChangeNotifier {
   String _shelfSort = 'recentRead';
   String _shelfFilter = 'all';
   String _shelfSourceFilter = 'all';
+  String _shelfPlatform = 'all';
+  String _shelfLocation = 'local';
   String _shelfLayout = 'shelf';
   BookGridDensity _shelfGridDensity = const BookGridDensity.auto();
   BookShelfPreferences _shelfPreferences =
@@ -965,6 +969,8 @@ class LibraryState extends ChangeNotifier {
   String get shelfSort => _shelfSort;
   String get shelfFilter => _shelfFilter;
   String get shelfSourceFilter => _shelfSourceFilter;
+  String get shelfPlatform => _shelfPlatform;
+  String get shelfLocation => _shelfLocation;
   String get shelfLayout => _shelfLayout;
   BookCollectionMode get shelfViewMode =>
       BookCollectionMode.parseOrDefault(_shelfLayout);
@@ -1237,6 +1243,8 @@ class LibraryState extends ChangeNotifier {
     String? layout,
     BookCollectionMode? mode,
     String? source,
+    String? platform,
+    String? location,
     BookGridDensity? gridDensity,
     BookShelfPreferences? shelfPreferences,
   }) async {
@@ -1248,6 +1256,8 @@ class LibraryState extends ChangeNotifier {
           layout: layout,
           mode: mode,
           source: source,
+          platform: platform,
+          location: location,
           gridDensity: gridDensity,
           shelfPreferences: shelfPreferences,
         ),
@@ -1269,6 +1279,8 @@ class LibraryState extends ChangeNotifier {
       final nextSource = ['all', 'local', 'cached', 'online'].contains(source)
           ? source!
           : _shelfSourceFilter;
+      final nextPlatform = platform ?? _shelfPlatform;
+      final nextLocation = location ?? _shelfLocation;
       await _commitLibraryRecords({
         'shelfSort': nextSort,
         'shelfFilter': nextFilter,
@@ -1276,19 +1288,25 @@ class LibraryState extends ChangeNotifier {
         'shelfGridDensity': nextGridDensity.value,
         'shelfPreferences': nextShelfPreferences.record,
         'shelfSourceFilter': nextSource,
+        'shelfPlatform': nextPlatform,
+        'shelfLocation': nextLocation,
       });
       if (nextSort != _shelfSort ||
           nextFilter != _shelfFilter ||
           nextLayout != _shelfLayout ||
           nextGridDensity != _shelfGridDensity ||
           nextShelfPreferences != _shelfPreferences ||
-          nextSource != _shelfSourceFilter) {
+          nextSource != _shelfSourceFilter ||
+          nextPlatform != _shelfPlatform ||
+          nextLocation != _shelfLocation) {
         _shelfSort = nextSort;
         _shelfFilter = nextFilter;
         _shelfLayout = nextLayout;
         _shelfGridDensity = nextGridDensity;
         _shelfPreferences = nextShelfPreferences;
         _shelfSourceFilter = nextSource;
+        _shelfPlatform = nextPlatform;
+        _shelfLocation = nextLocation;
         if (!_disposed) _shelfViewChanges.notifyListeners();
       }
     });

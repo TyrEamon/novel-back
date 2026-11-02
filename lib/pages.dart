@@ -40,8 +40,10 @@ import 'bookshelf_scope.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
 import 'sources/book_source.dart';
+import 'sources/shelf_platform_controls.dart';
 import 'sources/source_home_page.dart';
 import 'sources/source_pages.dart';
+import 'sources/source_platform_ui.dart';
 import 'sources/source_repository.dart';
 import 'blocked_tags_controls.dart';
 import 'catalog.dart';
@@ -1020,10 +1022,12 @@ class DiscoverPage extends StatelessWidget {
   Widget buildHeader(BuildContext context) => Row(
     children: [
       Expanded(
-        child: const ArchiveMasthead(
-          title: '轻小说文库',
-          code: 'WENKU8 / READING ARCHIVE',
-          brand: true,
+        // Same strip, same place: the header still reads like the original
+        // Wenku8 archive until the reader picks a source, and only then does
+        // the platform mark and source name take the masthead over.
+        child: DiscoveryPlatformHeader(
+          repository: sourceRepositoryOf(repository),
+          reduceMotion: state.reduceMotion,
         ),
       ),
       GlassIconButton(
@@ -2452,8 +2456,20 @@ class _ShelfPageState extends State<ShelfPage>
                     if (index == 0) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 22),
-                        child: state.shelfViewMode.hasShelf
-                            ? BookCollectionRegionToolbar(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Platform scope first: the three chips switch what
+                            // the whole shelf query looks at, so they sit above
+                            // both the featured wall and the index toolbar.
+                            ShelfPlatformControls(
+                              state: state,
+                              repository: widget.repository,
+                              offline: _cacheOnly,
+                            ),
+                            const SizedBox(height: 12),
+                            if (state.shelfViewMode.hasShelf)
+                              BookCollectionRegionToolbar(
                                 title: '立体书架',
                                 category: state.shelfContent.followCollection
                                     ? state.organization.nameOf(
@@ -2472,8 +2488,11 @@ class _ShelfPageState extends State<ShelfPage>
                                 onView: () => _viewOptions(
                                   target: BookCollectionViewTarget.shelf,
                                 ),
-                              )
-                            : _lowerShelfToolbar(saved.length),
+                              ),
+                            if (!state.shelfViewMode.hasShelf)
+                              _lowerShelfToolbar(saved.length),
+                          ],
+                        ),
                       );
                     }
                     if (saved.isEmpty && index == 1 + previewRows) {

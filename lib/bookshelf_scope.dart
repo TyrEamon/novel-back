@@ -1,4 +1,6 @@
 import 'library_state.dart';
+import 'sources/book_platform.dart';
+import 'sources/source_repository.dart';
 import 'offline_repository.dart';
 import 'local_library_preferences.dart';
 import 'catalog.dart';
@@ -21,6 +23,7 @@ Set<int> bookshelfIds(
         .where(
           (id) =>
               state.localBookVisible(id) &&
+              bookshelfMatchesPlatform(id, state, offline) &&
               (!filterSource || bookshelfMatchesSource(id, state, offline)) &&
               (!filterCategory ||
                   bookshelfMatchesCategory(
@@ -76,4 +79,22 @@ String bookshelfSourceLabel(String source) => switch (source) {
 String bookshelfSource(int id, OfflineNovelRepository? offline) {
   if (offline?.local?.book(id) != null) return '本地';
   return offline?.availableOffline(id) == true ? '缓存' : '在线';
+}
+
+/// Platform scope for the shelf. Imported originals only answer the local
+/// chip; everything else is matched by the source id the book was fetched
+/// through, so the chips slice the same list the reader already has.
+bool bookshelfMatchesPlatform(
+  int id,
+  LibraryState state,
+  OfflineNovelRepository? offline,
+) {
+  if (state.shelfPlatform == 'all') return true;
+  if (offline?.local?.book(id) != null) return state.shelfPlatform == 'local';
+  if (state.shelfPlatform == 'local') return false;
+  final book =
+      state.cachedNovel(id) ??
+      offline?.cache.book(id)?.novel ??
+      sourceRepositoryOf(offline)?.store.book(id);
+  return bookPlatformKey(book?.sourceId) == state.shelfPlatform;
 }
