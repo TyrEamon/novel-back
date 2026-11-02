@@ -118,16 +118,18 @@ class NovelFeedController extends ChangeNotifier {
     if (failure is SourceFailure && failure.message.trim().isNotEmpty) {
       return failure.message;
     }
-    if (failure is PlatformException && failure.details is Map) {
-      return switch ((failure.details as Map)['httpStatus']) {
-        429 => '当前请求较多，请稍后重试；已保存的书籍与阅读记录仍保留。',
-        401 || 403 => '当前连接需要登录或访问验证，请在账号页确认后重试。',
-        451 => '当前服务未提供此内容，已保存的书籍与阅读记录仍保留。',
-        _ => '检查网络后重试，已保存的书籍与阅读记录仍保留。${failure.message.isEmpty ? '' : '（${failure.message}）'}',
-      };
-    }
-    if (failure is PlatformException && failure.message.isNotEmpty) {
-      return '检查网络后重试，已保存的书籍与阅读记录仍保留。（${failure.message}）';
+    if (failure is PlatformException) {
+      final detail = failure.message?.trim() ?? '';
+      final tail = detail.isEmpty ? '' : '（$detail）';
+      if (failure.details is Map) {
+        return switch ((failure.details as Map)['httpStatus']) {
+          429 => '当前请求较多，请稍后重试；已保存的书籍与阅读记录仍保留。',
+          401 || 403 => '当前连接需要登录或访问验证，请在账号页确认后重试。',
+          451 => '当前服务未提供此内容，已保存的书籍与阅读记录仍保留。',
+          _ => '检查网络后重试，已保存的书籍与阅读记录仍保留。$tail',
+        };
+      }
+      return '检查网络后重试，已保存的书籍与阅读记录仍保留。$tail';
     }
     return '检查网络后重试，已保存的书籍与阅读记录仍保留。';
   }
