@@ -10,7 +10,7 @@
     "enabledExplore": true,
     "customOrder": 0,
     "weight": 0,
-    "concurrentRate": "1/2000",
+    "concurrentRate": "4/6000",
     "loginUrl": "https://www.wenku8.net/login.php",
     "ruleAccount": {
       "verify": {

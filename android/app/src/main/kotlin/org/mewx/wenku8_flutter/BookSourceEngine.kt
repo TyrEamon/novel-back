@@ -615,7 +615,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             run.countRequest()
             if (!plan.skipRateLimit) SourceRateLimit.await(source["bookSourceUrl"].toString(), run.state.get("source", "__concurrentRate").ifEmpty { source["concurrentRate"]?.toString().orEmpty() }, run)
             try {
-                reply = if (binary) {
+                val r = if (binary) {
                     run.fetchBytes?.invoke(spec.requestUrl(), spec.method.name, headers, body, options)
                         ?: run.fetch(spec.requestUrl(), spec.method.name, headers, body)
                 } else if (!forceHttp && spec.useWebView && spec.method != org.mewx.wenku8_flutter.legado.RequestMethod.POST) {
@@ -628,6 +628,11 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                             script = spec.webJs, headers = headers, delay = spec.webViewDelayTime))
                     } else response
                 }
+                // The site answers a burst with 429 and serves normally once
+                // its window resets, so a throttled reply is worth a retry;
+                // the next iteration waits on the rate limit before asking again.
+                reply = r
+                if (retryAllowed && attempt < spec.retry.coerceIn(0, 10) && r.status in setOf(429, 503)) continue
                 break
             } catch (e: CancellationException) { throw e }
             catch (e: SourceHeaderFailure) { throw e }
