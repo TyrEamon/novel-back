@@ -83,6 +83,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/sources/
     - assets/branding/app-icon.png
     - assets/report/
     - assets/reading_previews/archive-117.webp

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Color;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 
 import '../catalog.dart';
@@ -69,7 +70,10 @@ class SourceStore extends ChangeNotifier {
         Error.throwWithStackTrace(e, s);
       });
   Future<void> _load() async {
-    if (!await file.exists()) return;
+    if (!await file.exists()) {
+      await _seedBundled();
+      return;
+    }
     final text = await file.readAsString();
     final decoded = text.length > 128 * 1024
         ? await compute(_decodeSourceIndex, text)
@@ -150,6 +154,31 @@ class SourceStore extends ChangeNotifier {
     }
     selectedSource = decoded['selectedSource'] as String?;
     selectedExplore = decoded['selectedExplore'] as String?;
+    await _seedBundled();
+  }
+
+  /// The official site still serves its catalogue to the rule engine's WebView
+  /// transport, so a fresh install starts with that entry already present the
+  /// way the original app shipped one built-in source. An existing index that
+  /// the user has edited is never rewritten; only a missing entry is appended.
+  static const bundledSourceAsset = 'assets/sources/wenku8-official.json';
+  static const bundledSourceKey = 'https://www.wenku8.net';
+
+  Future<void> _seedBundled() async {
+    if (_sources.any((source) => source.key == bundledSourceKey)) return;
+    try {
+      final bundled = BookSource.parse(
+        await rootBundle.loadString(bundledSourceAsset),
+      );
+      if (bundled.isEmpty) return;
+      _sources.addAll(bundled);
+      // A profile that never picked a source should land on the official one
+      // instead of the retired built-in catalogue, which can only fail.
+      selectedSource ??= bundledSourceKey;
+      await flush();
+    } catch (_) {
+      // A missing or unreadable asset must not block an otherwise fine start.
+    }
   }
 
   static String _key(String source, String url) => jsonEncode([source, url]);
