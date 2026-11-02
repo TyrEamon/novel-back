@@ -250,8 +250,11 @@ class SourceNovelRepository extends ChangeNotifier
       '发现';
 
   /// A source that declares [BookSource.homeSections] gets a sectioned home
-  /// feed; everything else keeps the single flat explore listing.
-  bool get hasHomeSections => discoverySource?.homeSections.isNotEmpty ?? false;
+  /// feed, but only while no single explore entry has been picked: choosing an
+  /// entry is an explicit request for that one listing.
+  bool get hasHomeSections =>
+      store.selectedExplore == null &&
+      (discoverySource?.homeSections.isNotEmpty ?? false);
 
   /// Login can change both scripted discovery choices and protected listings.
   /// Invalidate failed/finished cursors and notify the existing feed listeners.
