@@ -718,7 +718,12 @@ class SourceNovelRepository extends ChangeNotifier
         _searchRequests.remove(request);
       }
     }
-    throw const SourceFailure('连续多个分页没有返回新书目，请检查书源分页规则');
+    // Every attempt landed on a page whose entries were all duplicates. Chained
+    // home sections legitimately overlap, so treat this as the end of the
+    // collection instead of a hard failure that hides the books already loaded.
+    listing.ended = true;
+    failures.remove(source.key);
+    return NovelPage(items: const [], page: page, totalPages: page);
   }
 
   @override
