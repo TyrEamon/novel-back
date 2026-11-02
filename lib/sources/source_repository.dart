@@ -407,24 +407,40 @@ class SourceNovelRepository extends ChangeNotifier
     return book;
   }
 
-  /// Matches a stranded book against the stored books by exact title (and
-  /// author when both sides have one). Only an unambiguous match is accepted,
-  /// so two books that share a title can never be swapped for one another.
+  static final _titleNoise = RegExp('[^0-9A-Za-z\u4e00-\u9fff]');
+
+  /// Title with spacing, punctuation and volume markers removed, so that
+  /// "开除人籍：我在1975当野人（1）" and "开除人籍 我在1975当野人" compare equal.
+  static String _titleKey(String value) =>
+      value.replaceAll(_titleNoise, '').toLowerCase();
+
+  /// Matches a stranded book against the stored books by title (and author
+  /// when both sides have one). Only an unambiguous match is accepted, so two
+  /// books that share a title can never be swapped for one another.
   Novel? _adoptByTitle(Novel book) {
-    final title = book.title.trim();
+    final title = _titleKey(book.title);
     if (title.isEmpty) return null;
-    final author = book.author.trim();
+    final author = _titleKey(book.author);
     final matches = [
       for (final candidate in store.books)
         if (candidate.id != book.id &&
             candidate.sourceId != null &&
             candidate.bookUrl != null &&
             store.source(candidate.sourceId) != null &&
-            candidate.title.trim() == title &&
-            (author.isEmpty || candidate.author.trim() == author))
+            _sameTitle(_titleKey(candidate.title), title) &&
+            (author.isEmpty || _titleKey(candidate.author) == author))
           candidate,
     ];
     return matches.length == 1 ? store.adoptSource(book, matches.single) : null;
+  }
+
+  /// Equality first, then containment so that a source that appends a subtitle
+  /// or a volume suffix still matches the bare title stored in the shelf.
+  static bool _sameTitle(String candidate, String target) {
+    if (candidate.isEmpty || target.isEmpty) return false;
+    return candidate == target ||
+        candidate.contains(target) ||
+        target.contains(candidate);
   }
 
   /// Last-resort source match for books whose stored source id no longer
@@ -454,6 +470,7 @@ class SourceNovelRepository extends ChangeNotifier
       throw SourceFailure(
         '本书尚未关联可用书源，已缓存章节仍可阅读'
         '［id=${book.id} 源=${book.sourceId ?? '空'} '
+        '入库=${store.book(book.id) != null} '
         '源库=${store.sources.length} 启用=${store.enabled.length} '
         '书库=${store.books.length} 链接=${book.bookUrl ?? '空'}］',
       );
