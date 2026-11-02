@@ -36,9 +36,9 @@
       "tocUrl": "#content a:contains(小说目录)@href##$##,{\"webView\":true,\"webViewDelayTime\":1500}"
     },
     "ruleToc": {
-      "chapterList": "table.css td.ccss",
-      "chapterName": "a@text",
-      "chapterUrl": "a@href##$##,{\"webView\":true,\"webViewDelayTime\":1200}"
+      "chapterList": "table.css td.ccss > a",
+      "chapterName": "text",
+      "chapterUrl": "href##$##,{\"webView\":true,\"webViewDelayTime\":1200}"
     },
     "ruleContent": {
       "content": "#content@html##<ul id=\"contentdp\">.*?</ul>####"
