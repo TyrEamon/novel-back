@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "bookSourceName": "轻小说文库 · 官网",
     "bookSourceGroup": "官网",
@@ -133,7 +133,7 @@
       "chapterUrl": "href##$##,{\"webView\":true,\"webViewDelayTime\":1200}"
     },
     "ruleContent": {
-      "content": "#content@html##<ul id=\"contentdp\">.*?</ul>####"
+      "content": "#content@html##<ul id=\"contentdp\">.*?</ul>##"
     }
   }
 ]
