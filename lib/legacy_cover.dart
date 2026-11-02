@@ -5,7 +5,14 @@ import 'online_component.dart';
 
 /// Bounded cover cache. Source previews use local seeds only.
 abstract final class LegacyCover {
-  static final _cache = LegacyCoverCache(request: (_) => unavailableOnline());
+  static var _cache = LegacyCoverCache(request: (_) => unavailableOnline());
+
+  /// Book sources resolve covers through their own network stack, so the
+  /// resolver is rebound once the repository is known at startup.
+  static void useResolver(Future<Uint8List> Function(int) request) {
+    _cache = LegacyCoverCache(request: request);
+  }
+
   static Uint8List? peek(int aid, {String? url}) => _cache.peek(aid);
   static Future<Uint8List> bytes(int aid, {String? url}) => _cache.load(aid);
 

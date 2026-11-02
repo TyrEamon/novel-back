@@ -48,7 +48,14 @@ class ReaderIllustrationCache {
     this.maxBytes = 16 * 1024 * 1024,
   }) : _request = request ?? LegacyTransport.illustration;
   static final shared = ReaderIllustrationCache();
-  final IllustrationRequest _request;
+  IllustrationRequest _request;
+
+  /// Book sources fetch illustrations from their own rule engine, so the
+  /// resolver is rebound once the repository is known at startup.
+  void useResolver(IllustrationRequest request) {
+    clearMemory();
+    _request = request;
+  }
 
   /// The application binds its explicit book cache once at startup. Viewing
   /// cache eviction never deletes these durable, book-owned illustrations.

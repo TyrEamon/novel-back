@@ -12,6 +12,7 @@ import 'app_window_insets.dart';
 import 'app_licenses.dart';
 import 'app_repository.dart';
 import 'catalog.dart';
+import 'legacy_cover.dart';
 import 'legacy_wenku_repository.dart';
 import 'library_state.dart';
 import 'local_platform.dart';
@@ -93,7 +94,15 @@ Future<void> main() async {
     final sources = await SourceStore.forApp();
     await sources.load();
     sources.reserveBooks(state.shelf.map(state.cachedNovel).whereType<Novel>());
-    remote = SourceNovelRepository(store: sources, legacyBook: state.cachedNovel);
+    final sourceRemote = SourceNovelRepository(
+      store: sources,
+      legacyBook: state.cachedNovel,
+    );
+    // Covers and illustrations come from the rule engine, not the removed
+    // built-in runtime, so rebind both caches to the source repository.
+    LegacyCover.useResolver(sourceRemote.cover);
+    ReaderIllustrationCache.shared.useResolver(sourceRemote.illustration);
+    remote = sourceRemote;
   }
   final repository = LocalPlatform.fileActions
       ? await openApplicationLibrary(remote: remote, network: network)
