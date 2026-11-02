@@ -696,11 +696,18 @@ class SourceNovelRepository extends ChangeNotifier
         final fresh = books.where((b) => listing.seen.add(b.id)).toList();
         listing.remotePage++;
         final pageUrl = result['pageUrl'];
-        if (pageUrl is String) listing.visited.add(pageUrl);
+        // A listing that hands back the page it was just asked for is not
+        // paginating any more. Follow it once instead of spending the whole
+        // retry budget on the same body. Searches keep the old budget: a POST
+        // search can carry the page in its body and repeat its URL.
+        final repeatedPage = pageUrl is String && pageUrl.isNotEmpty
+            ? !listing.visited.add(pageUrl)
+            : false;
         final next = result['nextUrl'];
         listing.nextUrl = next is String && next.isNotEmpty ? next : null;
         listing.ended =
             result['hasMore'] == false ||
+            (repeatedPage && !isSearch) ||
             (listing.nextUrl != null &&
                 listing.visited.contains(listing.nextUrl));
         if (fresh.isNotEmpty || listing.ended) {
