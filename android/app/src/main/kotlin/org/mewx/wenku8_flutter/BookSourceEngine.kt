@@ -321,13 +321,25 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             var firstPageUrl = ""
             var firstNextUrl: String? = null
             var anyMore = false
+            val failures = mutableListOf<Throwable>()
             templates.forEach { line ->
-                val part = bookListing(line, rules, inferNavigation)
+                // A title query and an author query hit different endpoints and
+                // fail independently; one throttled query must not discard the
+                // rows the other one already produced.
+                val part = try {
+                    bookListing(line, rules, inferNavigation)
+                } catch (error: Throwable) {
+                    failures += error
+                    null
+                } ?: return@forEach
                 merged.addAll((part["items"] as? List<Any?>).orEmpty())
                 if (firstPageUrl.isEmpty()) firstPageUrl = part["pageUrl"]?.toString().orEmpty()
                 if (firstNextUrl == null) firstNextUrl = part["nextUrl"]?.toString()
                 if (part["hasMore"] == true) anyMore = true
             }
+            // When every query failed this is a real failure (including a
+            // cancelled run), so keep its error instead of reporting no results.
+            if (merged.isEmpty() && failures.size == templates.size) throw failures.first()
             return mapOf(
                 "items" to merged.distinctBy { (it as? Map<*, *>)?.get("bookUrl") },
                 "pageUrl" to firstPageUrl, "nextUrl" to firstNextUrl, "hasMore" to anyMore,

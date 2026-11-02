@@ -1009,8 +1009,12 @@ class SourceNovelRepository extends ChangeNotifier
               .firstOrNull
               ?.url;
         }
+        // A detail page only carries an author link when the site publishes
+        // one; failing that, fall back to a search so the author page still
+        // lists whatever the source can find for that name.
         return [
           if (url != null) (source: source, operation: 'explore', term: url),
+          if (url == null) (source: source, operation: 'search', term: label),
         ];
       },
     );

@@ -10,10 +10,11 @@
     "enabledExplore": true,
     "customOrder": 0,
     "weight": 0,
+    "concurrentRate": "1/2000",
     "loginUrl": "https://www.wenku8.net/login.php",
     "ruleAccount": {
       "verify": {
-        "url": "https://www.wenku8.net/book/1.htm,{\"webView\":true,\"webViewDelayTime\":1500}",
+        "url": "https://www.wenku8.net/book/1.htm,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
         "loggedIn": "@js:result.includes('退出登录')"
       },
       "shelf": {
@@ -24,179 +25,179 @@
       }
     },
     "bookUrlPattern": "https://www\\.wenku8\\.net/book/\\d+\\.htm",
-    "searchUrl": "/modules/article/search.php?searchtype=articlename&searchkey={{key}}&page={{page}},{\"charset\":\"gbk\",\"webView\":true,\"webViewDelayTime\":1500}\n/modules/article/search.php?searchtype=author&searchkey={{key}}&page={{page}},{\"charset\":\"gbk\",\"webView\":true,\"webViewDelayTime\":1500}",
-    "exploreUrl": "总排行榜::https://www.wenku8.net/modules/article/toplist.php?sort=allvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n总推荐榜::https://www.wenku8.net/modules/article/toplist.php?sort=allvote&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n月点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=monthvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n周点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=weekvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n日点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=dayvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n最新入库::https://www.wenku8.net/modules/article/toplist.php?sort=postdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n最近更新::https://www.wenku8.net/modules/article/toplist.php?sort=lastupdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n已动画化::https://www.wenku8.net/modules/article/toplist.php?sort=anime&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 校园::https://www.wenku8.net/modules/article/tags.php?t=%D0%A3%D4%B0&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 青春::https://www.wenku8.net/modules/article/tags.php?t=%C7%E0%B4%BA&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 恋爱::https://www.wenku8.net/modules/article/tags.php?t=%C1%B5%B0%AE&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 奇幻::https://www.wenku8.net/modules/article/tags.php?t=%C6%E6%BB%C3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 魔法::https://www.wenku8.net/modules/article/tags.php?t=%C4%A7%B7%A8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 战斗::https://www.wenku8.net/modules/article/tags.php?t=%D5%BD%B6%B7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 冒险::https://www.wenku8.net/modules/article/tags.php?t=%C3%B0%CF%D5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n标签 · 悬疑::https://www.wenku8.net/modules/article/tags.php?t=%D0%FC%D2%C9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n电击文库::https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n富士见文库::https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n角川文库::https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nMF文库J::https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nFami通文库::https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nGA文库::https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nHJ文库::https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n一迅社::https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n集英社::https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n小学馆::https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n讲谈社::https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n少女文库::https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n其他文库::https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n游戏剧本::https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}",
+    "searchUrl": "/modules/article/search.php?searchtype=articlename&searchkey={{key}}&page={{page}},{\"charset\":\"gbk\",\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n/modules/article/search.php?searchtype=author&searchkey={{key}}&page={{page}},{\"charset\":\"gbk\",\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
+    "exploreUrl": "总排行榜::https://www.wenku8.net/modules/article/toplist.php?sort=allvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n总推荐榜::https://www.wenku8.net/modules/article/toplist.php?sort=allvote&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n月点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=monthvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n周点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=weekvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n日点击榜::https://www.wenku8.net/modules/article/toplist.php?sort=dayvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n最新入库::https://www.wenku8.net/modules/article/toplist.php?sort=postdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n最近更新::https://www.wenku8.net/modules/article/toplist.php?sort=lastupdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n已动画化::https://www.wenku8.net/modules/article/toplist.php?sort=anime&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 校园::https://www.wenku8.net/modules/article/tags.php?t=%D0%A3%D4%B0&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 青春::https://www.wenku8.net/modules/article/tags.php?t=%C7%E0%B4%BA&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 恋爱::https://www.wenku8.net/modules/article/tags.php?t=%C1%B5%B0%AE&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 奇幻::https://www.wenku8.net/modules/article/tags.php?t=%C6%E6%BB%C3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 魔法::https://www.wenku8.net/modules/article/tags.php?t=%C4%A7%B7%A8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 战斗::https://www.wenku8.net/modules/article/tags.php?t=%D5%BD%B6%B7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 冒险::https://www.wenku8.net/modules/article/tags.php?t=%C3%B0%CF%D5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n标签 · 悬疑::https://www.wenku8.net/modules/article/tags.php?t=%D0%FC%D2%C9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n电击文库::https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n富士见文库::https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n角川文库::https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\nMF文库J::https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\nFami通文库::https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\nGA文库::https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\nHJ文库::https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n一迅社::https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n集英社::https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n小学馆::https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n讲谈社::https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n少女文库::https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n其他文库::https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}\n游戏剧本::https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
     "homeSections": [
       {
         "id": "wenku8-top-allvisit",
         "title": "总排行榜",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=allvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=allvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-allvote",
         "title": "总推荐榜",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=allvote&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=allvote&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-monthvisit",
         "title": "月点击榜",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=monthvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=monthvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-weekvisit",
         "title": "周点击榜",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=weekvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=weekvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-dayvisit",
         "title": "日点击榜",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=dayvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=dayvisit&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-postdate",
         "title": "最新入库",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=postdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=postdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-lastupdate",
         "title": "最近更新",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=lastupdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=lastupdate&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-top-anime",
         "title": "已动画化",
-        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=anime&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/toplist.php?sort=anime&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-campus",
         "title": "标签 · 校园",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D0%A3%D4%B0&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D0%A3%D4%B0&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-youth",
         "title": "标签 · 青春",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C7%E0%B4%BA&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C7%E0%B4%BA&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-love",
         "title": "标签 · 恋爱",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C1%B5%B0%AE&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C1%B5%B0%AE&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-fantasy",
         "title": "标签 · 奇幻",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C6%E6%BB%C3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C6%E6%BB%C3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-magic",
         "title": "标签 · 魔法",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C4%A7%B7%A8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C4%A7%B7%A8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-battle",
         "title": "标签 · 战斗",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D5%BD%B6%B7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D5%BD%B6%B7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-adventure",
         "title": "标签 · 冒险",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C3%B0%CF%D5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%C3%B0%CF%D5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-tag-mystery",
         "title": "标签 · 悬疑",
-        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D0%FC%D2%C9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/tags.php?t=%D0%FC%D2%C9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-1",
         "title": "电击文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-2",
         "title": "富士见文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-3",
         "title": "角川文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-4",
         "title": "MF文库J",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-5",
         "title": "Fami通文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-6",
         "title": "GA文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-7",
         "title": "HJ文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-8",
         "title": "一迅社",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-9",
         "title": "集英社",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-10",
         "title": "小学馆",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-11",
         "title": "讲谈社",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-12",
         "title": "少女文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-13",
         "title": "其他文库",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       },
       {
         "id": "wenku8-class-14",
         "title": "游戏剧本",
         "requiresLogin": true,
-        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
       }
     ],
     "ruleSearch": {
       "bookList": "table.grid tr td > div || #content",
       "name": "b > a@text || #content b@text",
       "author": "p:contains(作者:)@text##作者:([^/]*).*##$1## || td:contains(小说作者)@text##小说作者：##",
-      "bookUrl": "b > a@href##$##,{\"webView\":true,\"webViewDelayTime\":1500} || @js:baseUrl",
+      "bookUrl": "b > a@href##$##,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1} || @js:baseUrl",
       "coverUrl": "img@src || #content img@src",
       "intro": "p:contains(简介:)@text##简介:## || span.hottext:contains(内容简介) ~ span@text",
       "kind": "p:contains(分类:)@text##.*分类:([^/]*).*##$1## || td:contains(文库分类)@text##文库分类：##"
@@ -205,7 +206,7 @@
       "bookList": "table.grid tr td > div",
       "name": "b > a@text",
       "author": "p:contains(作者:)@text##作者:([^/]*).*##$1##",
-      "bookUrl": "b > a@href##$##,{\"webView\":true,\"webViewDelayTime\":1500}",
+      "bookUrl": "b > a@href##$##,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
       "coverUrl": "img@src",
       "intro": "p:contains(简介:)@text##简介:##",
       "kind": "p:contains(分类:)@text##.*分类:([^/]*).*##$1##"
@@ -217,7 +218,7 @@
       "lastChapter": "span:contains(最近章节) ~ span a@text",
       "intro": "span.hottext:contains(内容简介) ~ span@text",
       "coverUrl": "#content img@src",
-      "tocUrl": "#content a:contains(小说目录)@href##$##,{\"webView\":true,\"webViewDelayTime\":1500}"
+      "tocUrl": "#content a:contains(小说目录)@href##$##,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}"
     },
     "ruleToc": {
       "chapterList": "table.css td.ccss > a",
