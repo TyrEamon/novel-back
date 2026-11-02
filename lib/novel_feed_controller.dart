@@ -19,15 +19,9 @@ class NovelFeedController extends ChangeNotifier {
     this.search = false,
     this.groupAllSearch = false,
     this.initialItems = 0,
-    this.pageLoader,
   }) : assert(initialItems >= 0);
   final NovelRepository repository;
   final bool search;
-
-  /// Lets a caller drive paging itself instead of going through
-  /// [NovelRepository.browse]. The book-source home feed uses this to page one
-  /// section of one source without pretending to be the discovery sort order.
-  final Future<NovelPage> Function(int page, bool refresh)? pageLoader;
 
   /// The shared search page keeps each real field's cursor and result state.
   /// Other feed callers retain their existing single-list contract.
@@ -402,9 +396,7 @@ class NovelFeedController extends ChangeNotifier {
             requestedField == BookSearchField.all &&
                 requestedQuery.trim().startsWith('#');
         final result =
-            pageLoader != null
-            ? await pageLoader!(requestedPage, force)
-            : requestedPublication != null && publicationCatalog != null
+            requestedPublication != null && publicationCatalog != null
             ? await publicationCatalog.browsePublication(
                 requestedPublication.id,
                 page: requestedPage,

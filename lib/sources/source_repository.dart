@@ -249,10 +249,6 @@ class SourceNovelRepository extends ChangeNotifier
       discoverySource?.name ??
       '发现';
 
-  /// A source that declares [BookSource.homeSections] gets a sectioned home
-  /// feed; everything else keeps the single flat explore listing.
-  bool get hasHomeSections => discoverySource?.homeSections.isNotEmpty ?? false;
-
   /// Login can change both scripted discovery choices and protected listings.
   /// Invalidate failed/finished cursors and notify the existing feed listeners.
   void sessionChanged() => _changed();
@@ -624,18 +620,6 @@ class SourceNovelRepository extends ChangeNotifier
     }
     return _page(source, 'explore', explore.url, page, refresh);
   }
-
-  /// One block of a sectioned source home. Every block passes its own [owner]
-  /// so leaving one list cannot cancel the feed of a neighbouring block.
-  Future<NovelPage> homePage(
-    BookSource source,
-    SourceHomeSection section, {
-    int page = 1,
-    bool refresh = false,
-    required Object owner,
-  }) => _page(source, section.operation, section.url, page, refresh, scope: owner);
-
-  void cancelHome(Object owner) => _cancelScope(owner);
 
   Future<NovelPage> _page(
     BookSource source,
