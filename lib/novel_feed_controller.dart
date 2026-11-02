@@ -9,6 +9,7 @@ import 'book_search.dart';
 import 'tag_catalogue.dart';
 import 'blocked_tags.dart';
 import 'publication_catalog.dart';
+import 'sources/book_source.dart' show SourceFailure;
 import 'web_publication_catalog.dart' show PublicationConnectionRequired;
 
 /// Owns page cursors, stale-result isolation and explicit recovery. A failed
@@ -111,13 +112,22 @@ class NovelFeedController extends ChangeNotifier {
     if (failure is FormatException && failure.message.toString().isNotEmpty) {
       return failure.message.toString();
     }
+    // A source that already knows what went wrong (a rule that matched nothing,
+    // a page that answered a different query) says it better than "check the
+    // network" ever could.
+    if (failure is SourceFailure && failure.message.trim().isNotEmpty) {
+      return failure.message;
+    }
     if (failure is PlatformException && failure.details is Map) {
       return switch ((failure.details as Map)['httpStatus']) {
         429 => '当前请求较多，请稍后重试；已保存的书籍与阅读记录仍保留。',
         401 || 403 => '当前连接需要登录或访问验证，请在账号页确认后重试。',
         451 => '当前服务未提供此内容，已保存的书籍与阅读记录仍保留。',
-        _ => '检查网络后重试，已保存的书籍与阅读记录仍保留。',
+        _ => '检查网络后重试，已保存的书籍与阅读记录仍保留。${failure.message.isEmpty ? '' : '（${failure.message}）'}',
       };
+    }
+    if (failure is PlatformException && failure.message.isNotEmpty) {
+      return '检查网络后重试，已保存的书籍与阅读记录仍保留。（${failure.message}）';
     }
     return '检查网络后重试，已保存的书籍与阅读记录仍保留。';
   }
