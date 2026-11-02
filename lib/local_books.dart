@@ -26,6 +26,7 @@ export 'local_book_import_issues.dart';
 import 'local_book_series.dart';
 import 'epub_image_styles.dart';
 import 'personal_images.dart';
+import 'local_text_encoding.dart';
 import 'local_text_import.dart';
 import 'local_text_rules.dart' show defaultLocalHeadingCandidate;
 import 'local_text_storage.dart';
@@ -130,10 +131,10 @@ ImportedBook parseLocalBook(
   if (!name.toLowerCase().endsWith('.txt')) {
     throw const FormatException('目前支持 TXT 与 EPUB 格式');
   }
-  final text = (input.text ?? utf8.decode(input.bytes)).replaceFirst(
-    '\uFEFF',
-    '',
-  );
+  // In-memory TXT (sync restore, cloud handoff) may be UTF-16 or GBK: decode
+  // with BOM detection and the quality gate instead of assuming UTF-8.
+  final text = (input.text ?? decodeLocalTextBytes(input.bytes).text)
+      .replaceFirst('\uFEFF', '');
   final lines = text.replaceAll(RegExp(r'\r\n?'), '\n').split('\n');
   final chapters = <NovelChapter>[];
   final bodies = <String>[];
@@ -626,8 +627,13 @@ ImportedBook _epub(
   var lastBodyBytes = 0;
   var currentVolume = '';
   var volumeId = 0;
-  for (final item in elements.where((e) => e.name.local == 'itemref')) {
-    if (item.getAttribute('linear') == 'no') continue;
+  // linear="no" items are covers/copyright pages rather than reading order.
+  // Some converters mark every itemref that way; then keep them all, because
+  // dropping them would leave no body text at all.
+  final spine = elements.where((e) => e.name.local == 'itemref').toList();
+  final skipLinearNo = spine.any((e) => e.getAttribute('linear') != 'no');
+  for (final item in spine) {
+    if (skipLinearNo && item.getAttribute('linear') == 'no') continue;
     if (external.contains(item.getAttribute('idref'))) {
       throw const FormatException('EPUB 正文依赖外部资源，请选择包含完整正文的原书');
     }
@@ -1519,9 +1525,11 @@ Future<_ImportedFile> _importOriginal(_ImportJob job) async {
       final suppliedText = job.input?.text ?? job.text;
       late File textFile;
       if (suppliedText != null || file == null) {
+        final directorySource =
+            suppliedText ?? decodeLocalTextBytes(job.input!.bytes).text;
         textFile = await File(
           '${staging.path}/.directory-source.txt',
-        ).writeAsString(suppliedText ?? utf8.decode(job.input!.bytes));
+        ).writeAsString(directorySource);
       } else {
         textFile = File(job.decodedPath ?? file.path);
       }

@@ -53,7 +53,10 @@ List<EpubNavigationLink> readEpubNavigation({
   final result = <EpubNavigationLink>[];
   void add(String base, String? href, String title, int depth) {
     title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (href == null || title.isEmpty || result.length >= 10000) return;
+    if (href == null || result.length >= 10000) return;
+    // An image-only or blank label still marks a reading destination, so it
+    // keeps its place instead of vanishing from the table of contents.
+    if (title.isEmpty) title = '第 ${result.length + 1} 章';
     try {
       final target = resolve(base, href);
       if (contains(target.path)) {

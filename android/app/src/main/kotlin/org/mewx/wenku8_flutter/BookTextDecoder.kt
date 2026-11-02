@@ -30,7 +30,16 @@ internal object BookTextDecoder {
         val detector = UniversalDetector(null)
         detector.handleData(sample, start, length)
         detector.dataEnd()
-        return Charset.forName(if (detector.detectedCharset?.startsWith("BIG5", ignoreCase = true) == true) "Big5-HKSCS" else "GB18030")
+        // The detector also answers UTF-16. Mapping that to GB18030 turns a
+        // BOM-less UTF-16 TXT into mojibake, so honour the endianness it found
+        // and keep GB18030 as the default for real CJK legacy text.
+        val detected = detector.detectedCharset.orEmpty().uppercase()
+        return when {
+            detected.startsWith("UTF-16LE") -> Charsets.UTF_16LE
+            detected.startsWith("UTF-16BE") -> Charsets.UTF_16BE
+            detected.startsWith("BIG5") -> Charset.forName("Big5-HKSCS")
+            else -> Charset.forName("GB18030")
+        }
     }
 
     /** Preserve the older, small-text bridge's explicit Charset contract. */

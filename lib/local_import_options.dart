@@ -1,9 +1,11 @@
 import 'dart:convert';
 
+/// A heading never ends in a full stop, but prose that happens to open with
+/// "第一章我已经看完了" does; the trailing lookahead keeps that line in the body.
 const defaultLocalChapterRule =
-    r'^(第[零〇一二三四五六七八九十百千万萬两兩0-9０-９]+[章节節回幕话話]|chapter\s+\d+|序章|序言|楔子|尾声|尾聲|后记|後記|番外)';
+    r'^(第[零〇一二三四五六七八九十百千万萬两兩0-9０-９]+[章节節回幕话話集篇]|chapter\s+\d+|序章|序言|引子|楔子|前言|尾声|尾聲|终章|終章|后记|後記|番外|外传|外傳|附录|附錄)(?!.*。\s*$)';
 const defaultLocalVolumeRule =
-    r'^(第[零〇一二三四五六七八九十百千万萬两兩0-9０-９]+[卷部]|volume\s+\d+)';
+    r'^(第[零〇一二三四五六七八九十百千万萬两兩0-9０-９]+[卷部]|volume\s+\d+)(?!.*。\s*$)';
 
 /// Rules are saved with the imported original, not applied retrospectively to
 /// a book whose chapter IDs already address positions and bookmarks.

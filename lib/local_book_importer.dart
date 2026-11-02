@@ -4,6 +4,7 @@ import 'app_interactions.dart';
 import 'app_ui.dart';
 import 'book_documents.dart';
 import 'book_sync.dart';
+import 'book_text_encoding.dart';
 import 'catalog.dart';
 import 'cloud_library_page.dart';
 import 'cloud_sources.dart';
@@ -278,7 +279,12 @@ class LocalBookImporter extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       organization = library.organization;
-      final encoding = prefs.getString('localTxtEncoding') ?? 'auto';
+      // A stale or renamed preference would reach the native decoder, which
+      // rejects unknown encodings as a platform error.
+      final stored = prefs.getString('localTxtEncoding');
+      final encoding = localTextEncodingOptions.containsKey(stored)
+          ? stored!
+          : 'auto';
       final importOptions = organization.importOptions.effective;
       final fresh = <int>{};
       var categoryWarning = false;
