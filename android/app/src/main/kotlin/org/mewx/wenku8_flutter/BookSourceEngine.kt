@@ -313,6 +313,26 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
     }
 
     private fun bookListing(template: String, rules: Map<String, Any?>, inferNavigation: Boolean = true): Map<String, Any?> {
+        // Legado treats a newline separated searchUrl as several queries whose
+        // rows are merged, which is how one source searches title and author.
+        val templates = template.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+        if (templates.size > 1) {
+            val merged = mutableListOf<Any?>()
+            var firstPageUrl = ""
+            var firstNextUrl: String? = null
+            var anyMore = false
+            templates.forEach { line ->
+                val part = bookListing(line, rules, inferNavigation)
+                merged += (part["items"] as? List<Any?>).orEmpty()
+                if (firstPageUrl.isEmpty()) firstPageUrl = part["pageUrl"]?.toString().orEmpty()
+                if (firstNextUrl == null) firstNextUrl = part["nextUrl"]?.toString()
+                if (part["hasMore"] == true) anyMore = true
+            }
+            return mapOf(
+                "items" to merged.distinctBy { (it as? Map<*, *>)?.get("bookUrl") },
+                "pageUrl" to firstPageUrl, "nextUrl" to firstNextUrl, "hasMore" to anyMore,
+            )
+        }
         val reply = request(template, checkLogin = true)
         val listRule = rules["bookList"]?.toString().orEmpty()
         val reverse = listRule.startsWith('-')
