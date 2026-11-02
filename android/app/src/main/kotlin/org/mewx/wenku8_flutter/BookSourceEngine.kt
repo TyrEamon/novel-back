@@ -377,9 +377,12 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         // came back), not an empty catalogue. Name the URL that was actually
         // asked so an empty listing can be told apart from a wrong one.
         val probe = if (items.isEmpty() && key.isNotBlank() && !reply.body.contains(key)) {
+            val title = Regex("<title[^>]*>([\\s\\S]*?)</title>", setOf(RegexOption.IGNORE_CASE))
+                .find(reply.body)?.groupValues?.get(1)?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
             "没有返回书目，回复里也找不到「$key」 · HTTP ${reply.status} · ${reply.body.length} 字节" +
                 " · 节点 ${nodes.size} · " +
                 (if (reply.body.contains("<table", ignoreCase = true)) "有表格" else "无表格") +
+                (if (title.isEmpty()) "" else " · 标题「${title.take(60)}」") +
                 " · ${reply.url}"
         } else null
         val navigation = if (inferNavigation) SourceDocumentMetadata.parse(reply.body, reply.url)?.navigation() else null
