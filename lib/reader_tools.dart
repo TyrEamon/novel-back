@@ -18,7 +18,6 @@ import 'font_settings_page.dart';
 import 'glass_choices.dart';
 import 'setting_menu.dart';
 import 'book_documents.dart';
-import 'local_books.dart' show isLocalBook;
 import 'reader_languages.dart';
 import 'bookmark_categories.dart';
 import 'feature_pages.dart' show confirmNovelAction;
@@ -1016,7 +1015,7 @@ class _ReaderToolsState extends State<ReaderTools>
     ('page', '屏幕', CupertinoIcons.rectangle),
     ('theme', '主题', CupertinoIcons.paintbrush),
     ('turn', '翻页', CupertinoIcons.arrow_left_right),
-    ('listening', '听书', CupertinoIcons.headphones),
+    // 个人版：听书分类入口已摘除，listeningBuilder 与听书面板仍保留。
     ('bookmarks', '书签', CupertinoIcons.bookmark),
   ];
 
@@ -1250,7 +1249,9 @@ class _ReaderToolsState extends State<ReaderTools>
                 label: '阅读方式',
                 value: _readerPreferences.mode,
                 options: {
-                  for (final mode in ReaderMode.values) mode: mode.label,
+                  for (final mode in ReaderMode.values)
+                    // 个人版：竖排翻页入口已摘除，竖排排版代码仍保留。
+                    if (mode != ReaderMode.vertical) mode: mode.label,
                 },
                 onChanged: (mode) =>
                     _preferences(_readerPreferences.copyWith(mode: mode)),
@@ -1783,20 +1784,7 @@ class _ReaderToolsState extends State<ReaderTools>
   List<Widget> _behaviorItems(BuildContext context, String category) {
     final prefs = _readerPreferences;
     return [
-      if (category == 'turn' &&
-          isLocalBook(widget.novel.id) &&
-          widget.listeningBuilder != null)
-        GlassTextButton(
-          key: const ValueKey('reader-local-listening'),
-          onPressed: () => Navigator.pop(context, const ReaderOpenListening()),
-          child: const Row(
-            children: [
-              ArchiveIcon(CupertinoIcons.headphones, size: 20),
-              SizedBox(width: 12),
-              AppText('听书'),
-            ],
-          ),
-        ),
+      // 个人版：本地书的听书入口已摘除，ReaderOpenListening 仍保留。
       if (category == 'turn' && widget.canHandoff)
         GlassTextButton(
           key: const ValueKey('reader-handoff-entry'),

@@ -12,8 +12,6 @@ import 'library_reflow.dart';
 import 'local_books.dart';
 import 'offline_repository.dart';
 import 'pages.dart' show ReaderPage;
-import 'quote_card.dart';
-import 'reading_report_fonts.dart';
 import 'bookmark_categories.dart';
 import 'reader_underline.dart';
 import 'reader_annotation_editor.dart';
@@ -578,51 +576,8 @@ class _BookmarkLibraryPageState extends State<BookmarkLibraryPage>
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  if (mark.quote.isNotEmpty)
-                                    GlassIconButton(
-                                      key: ValueKey(
-                                        'bookmark-share-${mark.id}',
-                                      ),
-                                      icon: CupertinoIcons.square_arrow_up,
-                                      label: '分享摘录图片 ${mark.id}',
-                                      onPressed: () async {
-                                        String? serifFamily;
-                                        try {
-                                          serifFamily =
-                                              await registeredReadingReportSerif(
-                                                widget.state.fonts,
-                                              );
-                                        } catch (_) {
-                                          // Optional installed typography never blocks sharing.
-                                        }
-                                        if (!context.mounted) return;
-                                        await pushNovelPage<void>(
-                                          context,
-                                          QuoteCardPage(
-                                            serifFamily: serifFamily,
-                                            data: QuoteCardData(
-                                              text: mark.quote,
-                                              book: novel?.title ?? '',
-                                              author: novel?.author ?? '',
-                                              chapter: mark.chapterTitle,
-                                              recordedAt:
-                                                  mark.createdAt == null ||
-                                                      mark.createdOffsetMinutes ==
-                                                          null
-                                                  ? null
-                                                  : mark.createdAt!.toUtc().add(
-                                                      Duration(
-                                                        minutes: mark
-                                                            .createdOffsetMinutes!,
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                          reduceMotion:
-                                              widget.state.reduceMotion,
-                                        );
-                                      },
-                                    ),
+                                  // 个人版：引用卡（分享摘录图片）入口已摘除，
+                                  // QuoteCardPage 仍保留在 quote_card.dart。
                                   GlassIconButton(
                                     icon: CupertinoIcons.folder,
                                     label:

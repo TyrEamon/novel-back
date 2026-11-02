@@ -129,7 +129,6 @@ import 'feature_pages.dart';
 import 'wenku_features.dart';
 import 'legacy_import_page.dart';
 import 'legacy_transport.dart';
-import 'review_pages.dart';
 
 export 'app_ui.dart' show sectionHeader;
 
@@ -4710,24 +4709,8 @@ class _DetailPageState extends State<DetailPage> with TickerProviderStateMixin {
                                           )
                                         : const SizedBox.shrink(),
                                   ),
-                                  if (!isLocalBook(novel.id) &&
-                                      WenkuFeaturesScope.maybeOf(context) !=
-                                          null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 24),
-                                      child: RevealFromTop(
-                                        animation: _contentIntro,
-                                        start: .34,
-                                        placeholder: const LoadingSkeleton(
-                                          layout: SkeletonLayout.actions,
-                                        ),
-                                        child: BookCommunityActions(
-                                          novel: novel,
-                                          state: state,
-                                          repository: repository,
-                                        ),
-                                      ),
-                                    ),
+                                  // 个人版：评论 / 社区动作入口已摘除，
+                                  // BookCommunityActions 仍保留在 review_pages.dart。
                                   Padding(
                                     padding: const EdgeInsets.only(top: 30),
                                     child: RevealFromTop(
@@ -9446,15 +9429,9 @@ class _ReaderPageState extends State<ReaderPage>
                           ),
                         ),
                       ),
-                      SizedBox(
-                        width: 46,
-                        child: GlassIconButton(
-                          key: const ValueKey('reader-listening-entry'),
-                          icon: CupertinoIcons.headphones,
-                          label: '听书',
-                          onPressed: _listening == null ? null : _listen,
-                        ),
-                      ),
+                      // 个人版：听书入口已摘除，_listen / ListeningScope 仍保留。
+                      // 这里留一个等宽占位，标题才保持居中。
+                      const SizedBox(width: 46),
                     ],
                   ),
                 ],
@@ -10116,7 +10093,7 @@ class _ReaderPageState extends State<ReaderPage>
                           vertical: _readerMode == ReaderMode.vertical,
                           onBookmark: _saveQuote,
                           onDictionary: _lookupQuote,
-                          onIllustrations: _volumeIllustrations,
+                          // 个人版：划词菜单的插图入口已摘除。
                           onSelect: () {
                             _stopAutoScroll();
                             _suspendListeningFollow();
@@ -10895,9 +10872,8 @@ class _ReaderPageState extends State<ReaderPage>
           onReaderTypefaceChanged: _applyReaderTypeface,
           languages: _unfilteredContent?.languages ?? const {},
           onHiddenLanguagesChanged: _applyHiddenLanguages,
-          onIllustrations: isLocalBook(widget.novel.id)
-              ? null
-              : () => Navigator.pop(context, const ReaderOpenIllustrations()),
+          // 个人版：阅读设置里的插图入口已摘除，
+          // ReaderVolumeIllustrationsPage / IllustrationLayoutPage 仍保留。
         ),
       );
       if (!mounted) return;
