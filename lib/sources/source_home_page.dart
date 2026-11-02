@@ -305,8 +305,6 @@ class _HomeSectionState extends State<_HomeSection>
                 title: widget.section.title,
                 code:
                     '${(widget.order + 1).toString().padLeft(2, '0')} / ARCHIVE INDEX',
-                moreKey: ValueKey('source-home-more-${widget.section.id}'),
-                onMore: _more,
               ),
               const SizedBox(height: 12),
               if (_locked)
