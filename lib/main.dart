@@ -93,7 +93,18 @@ Future<void> main() async {
   if (LocalPlatform.fileActions) {
     final sources = await SourceStore.forApp();
     await sources.load();
-    sources.reserveBooks(state.shelf.map(state.cachedNovel).whereType<Novel>());
+    // Reserve every known book, not just the shelf. A book that was opened
+    // from a cached card or a search result is not shelved yet, and without
+    // its reservation `find` falls back to the legacy cached novel, which
+    // carries no source id, so chapter content fails while the directory
+    // still renders from cache.
+    try {
+      sources.reserveBooks(state.knownNovels);
+    } catch (_) {
+      sources.reserveBooks(
+        state.shelf.map(state.cachedNovel).whereType<Novel>(),
+      );
+    }
     final sourceRemote = SourceNovelRepository(
       store: sources,
       legacyBook: state.cachedNovel,

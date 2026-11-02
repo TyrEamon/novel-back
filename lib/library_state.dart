@@ -1038,6 +1038,12 @@ class LibraryState extends ChangeNotifier {
   bool contains(int id) => _shelf.contains(id);
   int chapterFor(int id) => _chapters[id] ?? _positions[id]?.chapter ?? 0;
   Novel? cachedNovel(int id) => _known[id];
+
+  /// Every book the app holds metadata for, shelved or not. Source
+  /// reservation needs the whole set: a book opened from a cached card,
+  /// history or a search result is not on the shelf yet, but its source
+  /// still has to resolve when the reader asks for chapter content.
+  Iterable<Novel> get knownNovels => _known.values;
   ReadingPosition? positionFor(int id) => _positions[id];
   List<ReaderBookmark> bookmarksFor(int id) =>
       List.unmodifiable(_bookmarks[id] ?? const <ReaderBookmark>[]);
