@@ -12,6 +12,9 @@ import 'library_workspace.dart';
 import 'novel_feed_controller.dart';
 import 'pages.dart' show DiscoverPage, openDetail;
 import 'publication_catalog.dart';
+import 'sources/book_source.dart';
+import 'sources/source_login_page.dart';
+import 'sources/source_repository.dart';
 import 'wenku_account.dart';
 import 'online_component.dart';
 import 'wenku_features.dart';
@@ -185,9 +188,15 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
   final _username = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
+  bool _webLogin = false;
   @override
   void initState() {
     super.initState();
+    _webLogin = sourceRepositoryOf(widget.repository)
+            ?.store
+            .sources
+            .any((source) => source.key == 'https://www.wenku8.net') ??
+        false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(widget.account.initialize());
     });
@@ -212,6 +221,22 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
   }
 
   Future<void> _login() async {
+    // The bundled wenku8 source knows how to drive the site's own login page
+    // inside a real WebView, which is the only place the account password can
+    // be used: the published 0.5.5 shell has no account API of its own.
+    final sources = sourceRepositoryOf(widget.repository);
+    final bundled = sources?.store.sources
+        .where((source) => source.key == 'https://www.wenku8.net')
+        .toList();
+    if (sources != null && bundled != null && bundled.isNotEmpty) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      await pushNovelPage<void>(
+        context,
+        SourceLoginPage(source: bundled.first, repository: sources),
+        reduceMotion: widget.state.reduceMotion,
+      );
+      return;
+    }
     final account = widget.account;
     if (account.busy) return;
     final revision = account.sessionRevision;
@@ -340,10 +365,18 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           ),
                         ),
                         const SizedBox(height: 20),
+                        if (_webLogin)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: AppText(
+                              '轻小说文库的账号密码由官网自己的登录页接收，点下面按钮会打开官方登录页；登录完成返回后，书架与书评会自动带上登录态。',
+                              style: TextStyle(fontSize: 13, height: 1.5),
+                            ),
+                          ),
                         GlassTextButton(
                           key: const ValueKey('account-login'),
                           onPressed: account.busy ? null : _login,
-                          child: const AppText('登录'),
+                          child: AppText(_webLogin ? '打开官网登录' : '登录'),
                         ),
                       ],
                     ),
