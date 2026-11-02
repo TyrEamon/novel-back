@@ -307,16 +307,56 @@ class SourceStore extends ChangeNotifier {
     return book;
   }
 
-  /// Re-attaches an existing book to a source without touching its identity or
-  /// cached directory. Needed when the stored source id no longer resolves,
-  /// e.g. the source list was re-imported under a new URL.
-  Novel bindSource(Novel book, String sourceId) {
-    final bound = Novel.fromSnapshot({
-      ...book.toSnapshot(),
-      'sourceId': sourceId,
-    });
-    _books[bound.id] = bound;
-    return bound;
+  /// Re-attaches an existing book to a source without touching its identity.
+  /// The directory has to be carried over by hand: `toSnapshot` only stores
+  /// `chapterCount`, so rebuilding through it would silently drop the cache.
+  Novel bindSource(Novel book, String sourceId) =>
+      _rebuild(book, sourceId: sourceId);
+
+  /// Takes the source identity, urls and directory from a book that still
+  /// knows its source, keeping this book's numeric id so shelf entries and
+  /// bookmarks keep pointing at it. Needed when metadata survived in a
+  /// snapshot written before the source id was recorded.
+  Novel adoptSource(Novel book, Novel donor) => _rebuild(
+    book,
+    sourceId: donor.sourceId,
+    bookUrl: book.bookUrl ?? donor.bookUrl,
+    tocUrl: book.tocUrl ?? donor.tocUrl,
+    chapters: book.chapters.isNotEmpty ? book.chapters : donor.chapters,
+  );
+
+  Novel _rebuild(
+    Novel book, {
+    String? sourceId,
+    String? bookUrl,
+    String? tocUrl,
+    List<NovelChapter>? chapters,
+  }) {
+    final id = sourceId ?? book.sourceId;
+    if (id == null) return book;
+    final url = bookUrl ?? book.bookUrl;
+    final merged = Novel(
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      genre: book.genre,
+      summary: book.summary,
+      colors: book.colors,
+      isComplete: book.isComplete,
+      coverUrl: book.coverUrl,
+      lastUpdate: book.lastUpdate,
+      chapterCount: book.chapterCount,
+      chapters: chapters ?? book.chapters,
+      sourceId: id,
+      bookUrl: url,
+      tocUrl: tocUrl ?? book.tocUrl,
+      authorUrl: book.authorUrl,
+      tagUrls: book.tagUrls,
+      navigation: book.navigation,
+    );
+    _books[merged.id] = merged;
+    if (url != null) _identities[_key(id, url)] = merged.id;
+    return merged;
   }
 
   int _allocate() {

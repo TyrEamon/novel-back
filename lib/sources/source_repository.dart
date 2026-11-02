@@ -384,13 +384,47 @@ class SourceNovelRepository extends ChangeNotifier
   Future<Novel?> find(int id) async {
     await store.load();
     final book = store.book(id);
-    if (book == null) return legacyBook?.call(id);
+    if (book == null) {
+      final legacy = legacyBook?.call(id);
+      if (legacy == null || legacy.sourceId != null) return legacy;
+      // Metadata restored from a snapshot written before the source id was
+      // recorded keeps the numeric id but loses the identity, so re-attach it
+      // from the stored book that still knows which source produced it.
+      return _adoptByTitle(legacy) ?? legacy;
+    }
     if (store.source(book.sourceId) != null) return book;
     final guess = _guessSource(book);
-    if (guess == null) return book;
-    final rebound = store.bindSource(book, guess.key);
-    await store.flush();
-    return rebound;
+    if (guess != null) {
+      final rebound = store.bindSource(book, guess.key);
+      await store.flush();
+      return rebound;
+    }
+    final adopted = _adoptByTitle(book);
+    if (adopted != null) {
+      await store.flush();
+      return adopted;
+    }
+    return book;
+  }
+
+  /// Matches a stranded book against the stored books by exact title (and
+  /// author when both sides have one). Only an unambiguous match is accepted,
+  /// so two books that share a title can never be swapped for one another.
+  Novel? _adoptByTitle(Novel book) {
+    final title = book.title.trim();
+    if (title.isEmpty) return null;
+    final author = book.author.trim();
+    final matches = [
+      for (final candidate in store.books)
+        if (candidate.id != book.id &&
+            candidate.sourceId != null &&
+            candidate.bookUrl != null &&
+            store.source(candidate.sourceId) != null &&
+            candidate.title.trim() == title &&
+            (author.isEmpty || candidate.author.trim() == author))
+          candidate,
+    ];
+    return matches.length == 1 ? store.adoptSource(book, matches.single) : null;
   }
 
   /// Last-resort source match for books whose stored source id no longer
@@ -420,7 +454,8 @@ class SourceNovelRepository extends ChangeNotifier
       throw SourceFailure(
         '本书尚未关联可用书源，已缓存章节仍可阅读'
         '［id=${book.id} 源=${book.sourceId ?? '空'} '
-        '源库=${store.sources.length} 链接=${book.bookUrl ?? '空'}］',
+        '源库=${store.sources.length} 启用=${store.enabled.length} '
+        '书库=${store.books.length} 链接=${book.bookUrl ?? '空'}］',
       );
     }
     return source;
