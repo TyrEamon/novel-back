@@ -169,6 +169,14 @@ class Novel {
     lastUpdate: lastUpdate,
     chapterCount: chapterCount,
     navigation: navigation,
+    // Source identity has to survive every rebuild: a book that loses it can
+    // still render its cached metadata and table of contents, but the reader
+    // has no way left to reach the provider for the body text.
+    sourceId: sourceId,
+    bookUrl: bookUrl,
+    tocUrl: tocUrl,
+    authorUrl: authorUrl,
+    tagUrls: tagUrls,
   );
 
   Novel withChapters(List<NovelChapter> items) => Novel(
@@ -184,6 +192,11 @@ class Novel {
     lastUpdate: lastUpdate,
     chapterCount: items.length,
     navigation: navigation,
+    sourceId: sourceId,
+    bookUrl: bookUrl,
+    tocUrl: tocUrl,
+    authorUrl: authorUrl,
+    tagUrls: tagUrls,
   );
 
   Map<String, Object?> toSnapshot() => {
