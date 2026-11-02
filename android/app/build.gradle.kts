@@ -67,11 +67,12 @@ android {
     buildTypes {
         release {
             proguardFile(file("document-import.pro"))
-            // The legado rule engine resolves rules through reflection and Rhino,
-            // so shrinking silently breaks chapter content while leaving listing
-            // and table of contents working. The 0.4.0 release shipped unshrunk.
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // The legado engine reaches Rhino, Jsoup, Hutool and BouncyCastle
+            // through runtime names. Without these two keep rules R8 strips the
+            // members chapter content depends on, while listing, detail pages
+            // and tables of contents keep working.
+            proguardFile(file("book-sources.pro"))
+            proguardFile(file("htmlunit-core-js.pro"))
             if (readerPreview) {
                 applicationIdSuffix = ".reader_preview"
             }
