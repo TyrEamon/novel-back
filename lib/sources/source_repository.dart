@@ -457,14 +457,28 @@ class SourceNovelRepository extends ChangeNotifier
       final book = await find(novelId);
       if (book == null) throw const SourceFailure('找不到书籍');
       final source = _source(book);
+      var target = chapter;
+      if ((target.url ?? '').trim().isEmpty) {
+        // Directories restored from an older snapshot can lose the provider
+        // chapter URL, which the engine needs as the request address.
+        for (final entry in await chapters(novelId)) {
+          if (entry.id == chapter.id) {
+            target = entry;
+            break;
+          }
+        }
+      }
+      if ((target.url ?? '').trim().isEmpty) {
+        throw const SourceFailure('这章缺少书源地址，请到目录页下拉刷新后重试');
+      }
       final raw = await platform.run(
         source,
         'content',
-        url: chapter.url,
+        url: target.url,
         book: _book(book),
         chapter: {
-          'title': chapter.title,
-          'url': chapter.url,
+          'title': target.title,
+          'url': target.url,
           'index':
               store.directory(novelId)?.indexWhere((c) => c.id == chapter.id) ??
               0,
@@ -479,7 +493,7 @@ class SourceNovelRepository extends ChangeNotifier
           final locator = sourceImageLocator(
             novelId,
             m[1]!.trim(),
-            referrer: chapter.url ?? '',
+            referrer: target.url ?? '',
           );
           return locator == null ? '[插图]' : '<!--image-->$locator<!--image-->';
         },
