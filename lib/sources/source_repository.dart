@@ -383,13 +383,45 @@ class SourceNovelRepository extends ChangeNotifier
   @override
   Future<Novel?> find(int id) async {
     await store.load();
-    return store.book(id) ?? legacyBook?.call(id);
+    final book = store.book(id);
+    if (book == null) return legacyBook?.call(id);
+    if (store.source(book.sourceId) != null) return book;
+    final guess = _guessSource(book);
+    if (guess == null) return book;
+    final rebound = store.bindSource(book, guess.key);
+    await store.flush();
+    return rebound;
+  }
+
+  /// Last-resort source match for books whose stored source id no longer
+  /// resolves (source list re-imported under a different URL, or metadata
+  /// restored from a snapshot written before the id was recorded). Only a
+  /// unique host match is accepted, so a wrong guess cannot steal a book.
+  BookSource? _guessSource(Novel book) {
+    final raw = book.bookUrl ?? book.tocUrl;
+    if (raw == null || raw.isEmpty) return null;
+    final host = Uri.tryParse(raw)?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return null;
+    String bare(String value) =>
+        value.startsWith('www.') ? value.substring(4) : value;
+    final matches = <BookSource>[];
+    for (final source in store.enabled) {
+      final candidate = Uri.tryParse(source.key)?.host.toLowerCase() ?? '';
+      if (candidate.isNotEmpty && bare(candidate) == bare(host)) {
+        matches.add(source);
+      }
+    }
+    return matches.length == 1 ? matches.single : null;
   }
 
   BookSource _source(Novel book) {
     final source = store.source(book.sourceId);
     if (source == null || !source.enabled) {
-      throw const SourceFailure('本书尚未关联可用书源，已缓存章节仍可阅读');
+      throw SourceFailure(
+        '本书尚未关联可用书源，已缓存章节仍可阅读'
+        '［id=${book.id} 源=${book.sourceId ?? '空'} '
+        '源库=${store.sources.length} 链接=${book.bookUrl ?? '空'}］',
+      );
     }
     return source;
   }

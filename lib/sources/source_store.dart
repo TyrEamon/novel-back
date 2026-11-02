@@ -307,6 +307,18 @@ class SourceStore extends ChangeNotifier {
     return book;
   }
 
+  /// Re-attaches an existing book to a source without touching its identity or
+  /// cached directory. Needed when the stored source id no longer resolves,
+  /// e.g. the source list was re-imported under a new URL.
+  Novel bindSource(Novel book, String sourceId) {
+    final bound = Novel.fromSnapshot({
+      ...book.toSnapshot(),
+      'sourceId': sourceId,
+    });
+    _books[bound.id] = bound;
+    return bound;
+  }
+
   int _allocate() {
     if (_nextId >= 0x60000000) throw const FormatException('书籍标识空间已满');
     return _nextId++;
