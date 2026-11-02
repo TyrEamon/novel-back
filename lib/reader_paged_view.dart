@@ -1141,6 +1141,27 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
       if (chapterChanged || viewportChanged || modeChanged) {
         _adjacentLayouts.clear();
         _adjacentRequests.clear();
+      } else {
+        // A typography-only reflow keeps the book geometry, so a neighbour
+        // paginated with the retired metrics would still pass the landing
+        // geometry check. Drop those; _prepareAdjacent repaginates them.
+        for (final direction in [-1, 1]) {
+          final adjacent = _adjacentLayouts[direction];
+          final chapter = direction < 0
+              ? widget.previousChapter
+              : widget.nextChapter;
+          if (adjacent == null || chapter == null) continue;
+          final expected = _paginationKey(
+            chapter.key,
+            chapter.content,
+            adjacent.bookLayout,
+            scaler,
+            null,
+          );
+          if (adjacent.key == expected) continue;
+          _adjacentLayouts.remove(direction);
+          _adjacentRequests.remove(direction);
+        }
       }
       _chapterTurnDirection = boundaryDirection;
       _chapterTurnForward = widget.chapterTurnDirection > 0;

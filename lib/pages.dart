@@ -6925,14 +6925,18 @@ class _ReaderPageState extends State<ReaderPage>
     _cancelExitRequest();
     _highlightTimer?.cancel();
     _findMatch.value = null;
-    _currentContent = null;
-    _unfilteredContent = null;
+    // A paged turn that already has the next body keeps it published. Nulling it
+    // swaps the paged view for the skeleton, which disposes every measured
+    // layout and repaginates the chapter from a blank frame.
+    final carried = _paginated ? prepared : null;
+    _currentContent = carried?.content;
+    _unfilteredContent = carried?.unfiltered;
     _illustrationsRefreshing = false;
     _autoPageTimer?.cancel();
     _autoPageTimer = null;
     _autoScroll.stop();
     _autoLast = null;
-    _ready = false;
+    if (carried == null) _ready = false;
     _restorePending = position;
     _restoreAlignStart = _alignIosResumeStart(position);
     _restoreQueued = false;
@@ -7383,6 +7387,7 @@ class _ReaderPageState extends State<ReaderPage>
       target,
       prepared: _cachedDisplay(target),
       position: _boundaryPosition(target, direction),
+      turnDirection: direction,
     );
   }
 
