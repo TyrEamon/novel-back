@@ -374,8 +374,18 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             absolute(it, reply.url).takeIf { next -> next.isNotBlank() && next != reply.url }
         }
         val supportsPages = Regex("\\{\\{[\\s\\S]*?\\b(?:page|searchPage)\\b[\\s\\S]*?\\}\\}|<[^>]*,[^>]*>").containsMatchIn(template)
-        val nextUrl = explicitNext ?: navigation?.nextUrl?.takeUnless {
+        val navigationNext = navigation?.nextUrl?.takeUnless {
             supportsPages && losesTemplateFilters(template, reply.url, it)
+        }
+        // A pager href comes off the page as a bare link, so following it
+        // verbatim would drop the webView/charset options the source declares
+        // and the next page would be fetched as plain HTTP. Carry the options
+        // of the page that produced the link, unless the link names its own.
+        val inheritedOptions = org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(template, 2)
+            .getOrNull(1)?.trim()?.takeIf { it.startsWith("{") }
+        val nextUrl = (explicitNext ?: navigationNext)?.let { next ->
+            val own = org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(next, 2).size > 1
+            if (inheritedOptions == null || own) next else "$next,$inheritedOptions"
         }
         val hasMore = explicitNext != null || navigation?.nextUrl != null ||
             (navigation?.hasPager != true && items.isNotEmpty() && supportsPages)

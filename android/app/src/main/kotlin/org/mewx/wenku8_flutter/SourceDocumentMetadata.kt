@@ -156,8 +156,13 @@ internal class SourceDocumentMetadata private constructor(private val document: 
             if (disabled(anchor)) null else sameOriginUrl(anchor.attr("href"))
         }
         val pager = document.select(".pagination, .pager, nav[aria-label*=agination]")
-        val labelled = document.select("a.next[href], a[aria-label][href], a[title][href]").filter { anchor ->
-            listOf(anchor.text(), anchor.attr("aria-label"), anchor.attr("title")).any { pageLabel(it) in NEXT_LABELS }
+        // Plenty of sites (wenku8 among them) draw the pager as a bare
+        // "下一页" anchor with no rel, no class and no aria-label, so a
+        // label scan limited to a.next/aria/title never finds their second
+        // page and every listing stays stuck on page one.
+        val labelled = document.select("a[href]").filter { anchor ->
+            val labels = listOf(anchor.text(), anchor.attr("aria-label"), anchor.attr("title"))
+            labels.any { pageLabel(it) in NEXT_LABELS }
         }
         val next = relNext ?: (pager.asSequence().flatMap { it.select("a[href]").asSequence() } + labelled.asSequence())
             .firstNotNullOfOrNull { anchor ->
@@ -165,7 +170,12 @@ internal class SourceDocumentMetadata private constructor(private val document: 
                 if (disabled(anchor) || labels.none { pageLabel(it) in NEXT_LABELS }) null
                 else sameOriginUrl(anchor.attr("href"))
             }
-        return Navigation(next, pager.isNotEmpty() || labelled.isNotEmpty() || document.select("link[rel~=prev], a[rel~=prev], link[rel~=next], a[rel~=next]").isNotEmpty())
+        // The final page keeps the same label but drops the link; noticing the
+        // bare label there is what lets the listing end instead of asking for a
+        // page the site will only answer with the one already shown.
+        val labelledOff = document.select("a, span, b, strong, em").any { pageLabel(it.ownText()) in NEXT_LABELS }
+        return Navigation(next, pager.isNotEmpty() || labelled.isNotEmpty() || labelledOff ||
+            document.select("link[rel~=prev], a[rel~=prev], link[rel~=next], a[rel~=next]").isNotEmpty())
     }
 
     private fun sameOriginUrl(value: String): String? = runCatching {

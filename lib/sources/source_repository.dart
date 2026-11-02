@@ -696,18 +696,11 @@ class SourceNovelRepository extends ChangeNotifier
         final fresh = books.where((b) => listing.seen.add(b.id)).toList();
         listing.remotePage++;
         final pageUrl = result['pageUrl'];
-        // A listing that hands back the page it was just asked for is not
-        // paginating any more. Follow it once instead of spending the whole
-        // retry budget on the same body. Searches keep the old budget: a POST
-        // search can carry the page in its body and repeat its URL.
-        final repeatedPage = pageUrl is String && pageUrl.isNotEmpty
-            ? !listing.visited.add(pageUrl)
-            : false;
+        if (pageUrl is String) listing.visited.add(pageUrl);
         final next = result['nextUrl'];
         listing.nextUrl = next is String && next.isNotEmpty ? next : null;
         listing.ended =
             result['hasMore'] == false ||
-            (repeatedPage && !isSearch) ||
             (listing.nextUrl != null &&
                 listing.visited.contains(listing.nextUrl));
         if (fresh.isNotEmpty || listing.ended) {
@@ -725,12 +718,7 @@ class SourceNovelRepository extends ChangeNotifier
         _searchRequests.remove(request);
       }
     }
-    // Every attempt landed on a page whose entries were all duplicates. Chained
-    // home sections legitimately overlap, so treat this as the end of the
-    // collection instead of a hard failure that hides the books already loaded.
-    listing.ended = true;
-    failures.remove(source.key);
-    return NovelPage(items: const [], page: page, totalPages: page);
+    throw const SourceFailure('连续多个分页没有返回新书目，请检查书源分页规则');
   }
 
   @override
