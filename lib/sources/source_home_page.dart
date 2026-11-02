@@ -51,28 +51,81 @@ class SourceHomePage extends StatefulWidget {
 
 class _SourceHomePageState extends State<SourceHomePage> {
   int _generation = 0;
+
+  /// null while the account probe is in flight. The feed stays undecided
+  /// instead of rendering every gated block and then yanking it away.
+  bool? _signedIn;
+  bool _probing = false, _pendingProbe = false;
+
   @override
   void initState() {
     super.initState();
     widget.sources.addListener(_changed);
+    widget.sources.accountChanges.addListener(_changed);
+    unawaited(_readAccount());
   }
 
   void _changed() {
     if (mounted) setState(() => _generation++);
+    unawaited(_readAccount());
+  }
+
+  /// A block the source declares login-only is dropped from the feed until a
+  /// session exists, so an anonymous profile never fires the requests that are
+  /// guaranteed to bounce to the login page.
+  Future<void> _readAccount() async {
+    // A probe already in flight would report the pre-login state, so remember
+    // that another look is owed instead of dropping the notification.
+    if (_probing) {
+      _pendingProbe = true;
+      return;
+    }
+    _probing = true;
+    try {
+      final status = await widget.sources.accountStatus(widget.source);
+      if (mounted) setState(() => _signedIn = status.signedIn);
+    } catch (_) {
+      // A failed probe must not hide blocks that may well answer.
+      if (mounted) setState(() => _signedIn = true);
+    } finally {
+      _probing = false;
+      if (_pendingProbe) {
+        _pendingProbe = false;
+        unawaited(_readAccount());
+      }
+    }
   }
 
   @override
   void dispose() {
     widget.sources.removeListener(_changed);
+    widget.sources.accountChanges.removeListener(_changed);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final sections = widget.source.homeSections;
+    final signedIn = _signedIn;
+    final all = widget.source.homeSections;
+    // Resolved to a plain bool so the block filter never leans on null
+    // promotion inside a collection-if.
+    final open = signedIn == true;
+    final visible = signedIn == null
+        ? const <SourceHomeSection>[]
+        : [
+            for (final section in all)
+              if (!section.requiresLogin || open) section,
+          ];
+    final padding = EdgeInsets.fromLTRB(
+      24,
+      20,
+      24,
+      MediaQuery.paddingOf(context).bottom + 120,
+    );
     return RefreshIndicator(
       onRefresh: () async {
         setState(() => _generation++);
+        await _readAccount();
         await Future<void>.delayed(Duration.zero);
       },
       child: CustomScrollView(
@@ -91,35 +144,70 @@ class _SourceHomePageState extends State<SourceHomePage> {
             ),
             sliver: SliverToBoxAdapter(child: widget.heading),
           ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              24,
-              20,
-              24,
-              MediaQuery.paddingOf(context).bottom + 120,
-            ),
-            sliver: SliverList.builder(
-              itemCount: sections.length,
-              itemBuilder: (context, index) => _HomeSection(
-                key: ValueKey((
-                  widget.source.key,
-                  sections[index].id,
-                  _generation,
-                )),
-                sources: widget.sources,
-                source: widget.source,
-                section: sections[index],
-                repository: widget.repository,
-                state: widget.state,
-                featured: index == 0,
-                order: index,
+          if (signedIn == null)
+            SliverPadding(
+              padding: padding,
+              sliver: const SliverToBoxAdapter(
+                child: BookCollectionSkeleton(rows: 2),
+              ),
+            )
+          else if (visible.isEmpty)
+            SliverPadding(
+              padding: padding,
+              sliver: SliverToBoxAdapter(child: _loginPrompt(context)),
+            )
+          else
+            SliverPadding(
+              padding: padding,
+              sliver: SliverList.builder(
+                itemCount: visible.length,
+                itemBuilder: (context, index) => _HomeSection(
+                  key: ValueKey((
+                    widget.source.key,
+                    visible[index].id,
+                    _generation,
+                  )),
+                  sources: widget.sources,
+                  source: widget.source,
+                  section: visible[index],
+                  repository: widget.repository,
+                  state: widget.state,
+                  signedIn: open,
+                  featured: index == 0,
+                  order: index,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
   }
+
+  /// Shown when every block this source advertises is behind the login wall,
+  /// which is far more honest than a list of identical failures.
+  Widget _loginPrompt(BuildContext context) => ContentPanel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppText('此源的内容需登录后显示'),
+        const SizedBox(height: 8),
+        const AppText(
+          '登录一次账号密码，会话会留在该源自己的浏览环境里，发现页随后自动出现。',
+          style: TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        GlassTextButton(
+          onPressed: () => openSourceManager(
+            context,
+            widget.sources,
+            reduceMotion: widget.state.reduceMotion,
+            library: widget.state,
+          ),
+          child: const AppText('账号与登录'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _HomeSection extends StatefulWidget {
@@ -130,6 +218,7 @@ class _HomeSection extends StatefulWidget {
     required this.section,
     required this.repository,
     required this.state,
+    required this.signedIn,
     required this.featured,
     required this.order,
   });
@@ -138,6 +227,7 @@ class _HomeSection extends StatefulWidget {
   final SourceHomeSection section;
   final NovelRepository repository;
   final LibraryState state;
+  final bool signedIn;
   final bool featured;
   final int order;
   @override
@@ -186,7 +276,7 @@ class _HomeSectionState extends State<_HomeSection>
       // This port keeps the source account flows on the source manager page, so
       // a login-only block reports its requirement instead of opening a
       // dedicated account route.
-      if (widget.section.requiresLogin) {
+      if (widget.section.requiresLogin && !widget.signedIn) {
         setState(() => _locked = true);
         return;
       }

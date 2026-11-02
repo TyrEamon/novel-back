@@ -1,10 +1,11 @@
-[
+﻿[
   {
     "bookSourceName": "轻小说文库 · 官网",
     "bookSourceGroup": "官网",
     "bookSourceUrl": "https://www.wenku8.net",
     "bookSourceType": 0,
-    "bookSourceComment": "官网 www.wenku8.net。站点在 Cloudflare 托管挑战后面，所以每个地址都带 {\"webView\":true} 让引擎走 WebView 请求，只有真实浏览器栈才拿得到 cf_clearance；搜索的 searchkey 必须 GBK，用 {\"charset\":\"gbk\"} 让引擎编码。",
+    "ruleRevision": 2,
+    "bookSourceComment": "官网 www.wenku8.net。站点在 Cloudflare 托管挑战后面，所以每个地址都带 {\"webView\":true} 让引擎走 WebView 请求，只有真实浏览器栈才拿得到 cf_clearance；搜索的 searchkey 必须 GBK，用 {\"charset\":\"gbk\"} 让引擎编码。站内导航页（index.php、articlelist.php、bookcase.php）一律要求登录，只有详情页和正文页对游客开放，所以首页栏目全部标了 requiresLogin：没有会话时它们不会发起任何请求。",
     "enabled": true,
     "enabledExplore": true,
     "customOrder": 0,
@@ -17,71 +18,85 @@
       {
         "id": "wenku8-class-1",
         "title": "电击文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-2",
         "title": "富士见文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-3",
         "title": "角川文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-4",
         "title": "MF文库J",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-5",
         "title": "Fami通文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-6",
         "title": "GA文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-7",
         "title": "HJ文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-8",
         "title": "一迅社",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-9",
         "title": "集英社",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-10",
         "title": "小学馆",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-11",
         "title": "讲谈社",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-12",
         "title": "少女文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-13",
         "title": "其他文库",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       },
       {
         "id": "wenku8-class-14",
         "title": "游戏剧本",
+        "requiresLogin": true,
         "url": "https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
       }
     ],

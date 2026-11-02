@@ -159,25 +159,47 @@ class SourceStore extends ChangeNotifier {
 
   /// The official site still serves its catalogue to the rule engine's WebView
   /// transport, so a fresh install starts with that entry already present the
-  /// way the original app shipped one built-in source. An existing index that
-  /// the user has edited is never rewritten; only a missing entry is appended.
+  /// way the original app shipped one built-in source.
+  ///
+  /// An entry that is absent gets appended. An entry that is present gets
+  /// upgraded only when the bundled asset carries a higher `ruleRevision`, and
+  /// even then the user's own switches survive: shipping better rules never
+  /// silently re-enables a disabled source.
   static const bundledSourceAsset = 'assets/sources/wenku8-official.json';
   static const bundledSourceKey = 'https://www.wenku8.net';
 
   Future<void> _seedBundled() async {
-    if (_sources.any((source) => source.key == bundledSourceKey)) return;
-    try {
-      final bundled = BookSource.parse(
-        await rootBundle.loadString(bundledSourceAsset),
-      );
-      if (bundled.isEmpty) return;
+    final bundled = await _readBundled();
+    if (bundled.isEmpty) return;
+    final fresh = bundled.first;
+    final index = _sources.indexWhere((source) => source.key == fresh.key);
+    if (index < 0) {
       _sources.addAll(bundled);
       // A profile that never picked a source should land on the official one
       // instead of the retired built-in catalogue, which can only fail.
       selectedSource ??= bundledSourceKey;
       await flush();
+      return;
+    }
+    final current = _sources[index];
+    if (_revision(fresh) <= _revision(current)) return;
+    _sources[index] = fresh.copyWith(
+      enabled: current.enabled,
+      exploreEnabled: current.exploreEnabled,
+      group: current.group,
+    );
+    await flush();
+  }
+
+  static int _revision(BookSource source) =>
+      int.tryParse('${source.data['ruleRevision'] ?? ''}') ?? 0;
+
+  /// A missing or unreadable asset must not block an otherwise fine start.
+  static Future<List<BookSource>> _readBundled() async {
+    try {
+      return BookSource.parse(await rootBundle.loadString(bundledSourceAsset));
     } catch (_) {
-      // A missing or unreadable asset must not block an otherwise fine start.
+      return const [];
     }
   }
 

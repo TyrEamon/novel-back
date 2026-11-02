@@ -175,6 +175,7 @@ class SourceHomeSection {
     required this.title,
     this.url = '',
     this.operation = 'explore',
+    this.requiresSession = false,
   });
   factory SourceHomeSection.fromMap(
     Map<String, dynamic> value,
@@ -200,10 +201,16 @@ class SourceHomeSection {
       title: title,
       url: url,
       operation: operation,
+      requiresSession: value['requiresLogin'] == true,
     );
   }
   final String id, title, url, operation;
-  bool get requiresLogin => operation == 'cloudShelf';
+
+  /// Declared by the source author: this block only answers once a session
+  /// exists. The home feed skips it entirely instead of firing a request that
+  /// is guaranteed to bounce to the login page.
+  final bool requiresSession;
+  bool get requiresLogin => operation == 'cloudShelf' || requiresSession;
 }
 
 class SourceExplore {

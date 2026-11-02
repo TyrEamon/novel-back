@@ -4,6 +4,7 @@ import 'book_source.dart';
 class SourceAccountStatus {
   const SourceAccountStatus({
     this.status = 'none',
+    this.hasSession = false,
     this.loginAvailable = false,
     this.canVerify = false,
     this.canSync = false,
@@ -16,6 +17,7 @@ class SourceAccountStatus {
     final capabilities = value['capabilities'] as Map? ?? const {};
     return SourceAccountStatus(
       status: '${value['status'] ?? 'none'}',
+      hasSession: value['hasSession'] == true,
       loginAvailable: value['loginAvailable'] == true,
       canVerify: capabilities['verify'] == true,
       canSync: capabilities['shelf'] == true,
@@ -30,9 +32,15 @@ class SourceAccountStatus {
     );
   }
   final String status;
+  final bool hasSession;
   final bool loginAvailable, canVerify, canSync, canCheckIn;
   final bool checkedInToday, configurationError;
   final DateTime? checkedAt;
+
+  /// True when blocks gated behind a login have a session worth using. A
+  /// session the source has already rejected does not count, so a stale cookie
+  /// does not keep firing requests that are known to bounce.
+  bool get signedIn => hasSession && status != 'signedOut';
   String get label => switch (status) {
     'verified' => '已验证登录',
     'signedOut' => '登录已失效',
