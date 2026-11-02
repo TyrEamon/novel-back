@@ -40,6 +40,7 @@ import 'bookshelf_scope.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
 import 'sources/book_source.dart';
+import 'sources/source_home_page.dart';
 import 'sources/source_pages.dart';
 import 'sources/source_repository.dart';
 import 'blocked_tags_controls.dart';
@@ -1326,6 +1327,26 @@ class DiscoverPage extends StatelessWidget {
       if (feed != null) {
         body = FeedRefresh(feed: feed!, child: body);
       }
+    }
+    // A source that publishes homeSections replaces the flat explore listing
+    // with its own block layout; the page header above stays untouched.
+    final sourceRepository = sourceRepositoryOf(repository);
+    final sectionedSource = sourceRepository?.hasHomeSections == true
+        ? sourceRepository!.discoverySource
+        : null;
+    if (sourceRepository != null && sectionedSource != null) {
+      return GlassHeaderLayout(
+        showHeader: showHeader,
+        header: buildHeader(context),
+        body: SourceHomePage(
+          key: ValueKey('source-home-page-${sectionedSource.key}'),
+          sources: sourceRepository,
+          source: sectionedSource,
+          repository: repository,
+          state: state,
+          heading: _categoryHeader(context),
+        ),
+      );
     }
     return GlassHeaderLayout(
       showHeader: showHeader,

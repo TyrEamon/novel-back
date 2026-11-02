@@ -13,7 +13,9 @@ String sourceAuthorName(String raw) => raw
 /// The public Legado 3 JSON field names are kept verbatim. Unknown fields are
 /// retained when editing/exporting instead of silently destroying a source.
 class BookSource {
-  BookSource(Map<String, dynamic> json) : data = Map.unmodifiable(json) {
+  BookSource(Map<String, dynamic> json)
+    : data = Map.unmodifiable(json),
+      homeSections = _readHomeSections(json['homeSections']) {
     if (name.isEmpty || key.isEmpty) {
       throw const FormatException('书源缺少名称或 bookSourceUrl');
     }
@@ -39,6 +41,10 @@ class BookSource {
   String get group => '${data['bookSourceGroup'] ?? ''}'.trim();
   bool get enabled => data['enabled'] != false;
   bool get exploreEnabled => enabled && data['enabledExplore'] != false;
+  /// A source may publish several home blocks (hot lists, per-genre shelves)
+  /// instead of a single flat explore entry. The engine never builds these;
+  /// they come straight from the imported JSON.
+  final List<SourceHomeSection> homeSections;
   bool get isScript => '${data['mainJs'] ?? ''}'.trim().isNotEmpty;
   bool get searchable =>
       isScript || '${data['searchUrl'] ?? ''}'.trim().isNotEmpty;
@@ -115,6 +121,58 @@ class SourceFailure implements Exception {
   final String message;
   @override
   String toString() => message;
+}
+
+List<SourceHomeSection> _readHomeSections(dynamic raw) {
+  if (raw == null) return const [];
+  if (raw is! List) throw const FormatException('首页栏目应为列表');
+  final ids = <String>{};
+  final result = <SourceHomeSection>[];
+  for (final entry in raw) {
+    if (entry is! Map) throw const FormatException('首页栏目应为对象');
+    result.add(
+      SourceHomeSection.fromMap(Map<String, dynamic>.from(entry), ids),
+    );
+  }
+  return List.unmodifiable(result);
+}
+
+/// One block of a source's home feed, e.g. 热门 / 新书 / 完本.
+class SourceHomeSection {
+  const SourceHomeSection({
+    required this.id,
+    required this.title,
+    this.url = '',
+    this.operation = 'explore',
+  });
+  factory SourceHomeSection.fromMap(
+    Map<String, dynamic> value,
+    Set<String> ids,
+  ) {
+    final id = value['id'], title = value['title'];
+    final operation = value['operation'] ?? 'explore', url = value['url'] ?? '';
+    if (id is! String ||
+        title is! String ||
+        id.isEmpty ||
+        title.isEmpty ||
+        !ids.add(id)) {
+      throw const FormatException('首页栏目标识或标题无效');
+    }
+    if (operation is! String ||
+        url is! String ||
+        !['explore', 'cloudShelf'].contains(operation) ||
+        operation == 'explore' && url.isEmpty) {
+      throw const FormatException('首页栏目操作或地址无效');
+    }
+    return SourceHomeSection(
+      id: id,
+      title: title,
+      url: url,
+      operation: operation,
+    );
+  }
+  final String id, title, url, operation;
+  bool get requiresLogin => operation == 'cloudShelf';
 }
 
 class SourceExplore {
