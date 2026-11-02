@@ -1,0 +1,90 @@
+name: build-048
+
+# Builds a debug-signed release APK from the p048 branch: the Patchouli
+# 0.4.8-preview.1 source tree, which is the last release that still ships the
+# full legado book-source engine. The published snapshot has no android/gradlew,
+# so the wrapper is restored from the Flutter SDK. Without android/key.properties
+# the release build falls back to the debug keystore (see app/build.gradle.kts).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ p048 ]
+
+concurrency:
+  group: build-048-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter 3.41.5
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.5'
+          channel: stable
+          cache: true
+
+      - name: Restore Gradle wrapper (omitted from the published snapshot)
+        run: |
+          set -euo pipefail
+          DEST="$GITHUB_WORKSPACE/android"
+          SRC="$FLUTTER_ROOT/bin/cache/artifacts/gradle_wrapper"
+          if [ -f "$SRC/gradle/wrapper/gradle-wrapper.jar" ]; then
+            echo "Using the gradle wrapper bundled with the Flutter SDK"
+            cp -f "$SRC/gradlew" "$SRC/gradlew.bat" "$DEST/"
+            cp -f "$SRC/gradle/wrapper/gradle-wrapper.jar" "$DEST/gradle/wrapper/"
+          else
+            mkdir -p /tmp/wrapgen && cd /tmp/wrapgen
+            printf '// placeholder so `gradle wrapper` accepts this directory\n' > settings.gradle.kts
+            if command -v gradle >/dev/null 2>&1; then
+              gradle wrapper --gradle-version 8.14 --distribution-type all
+            else
+              curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.14-bin.zip
+              unzip -q /tmp/gradle.zip -d /tmp
+              /tmp/gradle-8.14/bin/gradle wrapper --gradle-version 8.14 --distribution-type all
+            fi
+            cp -f /tmp/wrapgen/gradlew /tmp/wrapgen/gradlew.bat "$DEST/"
+            cp -f /tmp/wrapgen/gradle/wrapper/gradle-wrapper.jar "$DEST/gradle/wrapper/"
+          fi
+          chmod +x "$DEST/gradlew"
+          cat "$DEST/gradle/wrapper/gradle-wrapper.properties"
+          ls -l "$DEST/gradlew" "$DEST/gradle/wrapper/"
+
+      - name: Install NDK 28.2.13676358 and CMake 3.22.1
+        run: |
+          set -euo pipefail
+          SDKMAN="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          "$SDKMAN" --install "ndk;28.2.13676358" "cmake;3.22.1" > /dev/null
+          ls "$ANDROID_SDK_ROOT/ndk"
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build release APK (arm64-v8a)
+        run: |
+          set -euo pipefail
+          flutter build apk --release --target-platform android-arm64 2>&1 | tee /tmp/build.log
+          ls -l build/app/outputs/flutter-apk/
+
+      - name: Checksum
+        run: sha256sum build/app/outputs/flutter-apk/app-release.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: patchouli-0.4.8-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: warn
+          retention-days: 30
