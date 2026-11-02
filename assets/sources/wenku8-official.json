@@ -1,13 +1,90 @@
 [
   {
     "bookSourceName": "轻小说文库 · 官网",
+    "bookSourceGroup": "官网",
     "bookSourceUrl": "https://www.wenku8.net",
     "bookSourceType": 0,
-    "bookSourceGroup": "官网",
+    "bookSourceComment": "官网 www.wenku8.net。站点在 Cloudflare 托管挑战后面，所以每个地址都带 {\"webView\":true} 让引擎走 WebView 请求，只有真实浏览器栈才拿得到 cf_clearance；搜索的 searchkey 必须 GBK，用 {\"charset\":\"gbk\"} 让引擎编码。",
     "enabled": true,
     "enabledExplore": true,
+    "customOrder": 0,
+    "weight": 0,
+    "loginUrl": "https://www.wenku8.net/login.php",
+    "bookUrlPattern": "https://www\\.wenku8\\.net/book/\\d+\\.htm",
+    "searchUrl": "/modules/article/search.php?searchtype=articlename&searchkey={{key}}&page={{page}},{\"charset\":\"gbk\",\"webView\":true,\"webViewDelayTime\":1500}",
     "exploreUrl": "电击文库::https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n富士见文库::https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n角川文库::https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nMF文库J::https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nFami通文库::https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nGA文库::https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\nHJ文库::https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n一迅社::https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n集英社::https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n小学馆::https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n讲谈社::https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n少女文库::https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n其他文库::https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}\n游戏剧本::https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}",
-    "searchUrl": "/modules/article/search.php?searchkey={{encodeURI(key,'gbk')}}&searchtype=articlename&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}",
+    "homeSections": [
+      {
+        "id": "wenku8-class-1",
+        "title": "电击文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=1&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-2",
+        "title": "富士见文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=2&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-3",
+        "title": "角川文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=3&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-4",
+        "title": "MF文库J",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=4&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-5",
+        "title": "Fami通文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=5&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-6",
+        "title": "GA文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=6&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-7",
+        "title": "HJ文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=7&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-8",
+        "title": "一迅社",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=8&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-9",
+        "title": "集英社",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=9&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-10",
+        "title": "小学馆",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=10&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-11",
+        "title": "讲谈社",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=11&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-12",
+        "title": "少女文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=12&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-13",
+        "title": "其他文库",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=13&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      },
+      {
+        "id": "wenku8-class-14",
+        "title": "游戏剧本",
+        "url": "https://www.wenku8.net/modules/article/articlelist.php?class=14&page={{page}},{\"webView\":true,\"webViewDelayTime\":1500}"
+      }
+    ],
     "ruleSearch": {
       "bookList": "table.grid tr td > div",
       "name": "b > a@text",
@@ -30,9 +107,9 @@
       "name": "#content b@text",
       "author": "td:contains(小说作者)@text##小说作者：##",
       "kind": "td:contains(文库分类)@text##文库分类：##",
-      "intro": "td[width=\"48%\"] span:contains(内容简介) ~ span@text",
-      "coverUrl": "#content img@src",
       "lastChapter": "span:contains(最近章节) ~ span a@text",
+      "intro": "span.hottext:contains(内容简介) ~ span@text",
+      "coverUrl": "#content img@src",
       "tocUrl": "#content a:contains(小说目录)@href##$##,{\"webView\":true,\"webViewDelayTime\":1500}"
     },
     "ruleToc": {
