@@ -150,7 +150,9 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 // Never send script bodies, complete URLs, returned prose, headers
                 // or the underlying HTTP exception (which may contain secrets).
                 val message = sourceRuleFailureMessage(failure) ?: failure.message?.takeIf { it.startsWith("书源") || it.startsWith("目录") || it.startsWith("正文") || it.startsWith("仅支持") || it.startsWith("远程 JS") || it.startsWith("脚本") || it.startsWith("单章") } ?: "书源规则或请求未完成，请检查后重试"
-                result.error("SOURCE_ERROR", message, null)
+                // Keep the exception type visible: a generic message alone cannot
+                // tell a rule miss apart from a broken build of the rule engine.
+                result.error("SOURCE_ERROR", "$message（${failure.javaClass.simpleName}）", null)
             }
         }
     }

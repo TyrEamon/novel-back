@@ -67,6 +67,11 @@ android {
     buildTypes {
         release {
             proguardFile(file("document-import.pro"))
+            // The legado rule engine resolves rules through reflection and Rhino,
+            // so shrinking silently breaks chapter content while leaving listing
+            // and table of contents working. The 0.4.0 release shipped unshrunk.
+            isMinifyEnabled = false
+            isShrinkResources = false
             if (readerPreview) {
                 applicationIdSuffix = ".reader_preview"
             }
