@@ -321,6 +321,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             var firstPageUrl = ""
             var firstNextUrl: String? = null
             var anyMore = false
+            var probe: String? = null
             val failures = mutableListOf<Throwable>()
             templates.forEach { line ->
                 // A title query and an author query hit different endpoints and
@@ -336,6 +337,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 if (firstPageUrl.isEmpty()) firstPageUrl = part["pageUrl"]?.toString().orEmpty()
                 if (firstNextUrl == null) firstNextUrl = part["nextUrl"]?.toString()
                 if (part["hasMore"] == true) anyMore = true
+                if (probe == null) probe = part["probe"]?.toString()
             }
             // When every query failed this is a real failure (including a
             // cancelled run), so keep its error instead of reporting no results.
@@ -343,6 +345,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             return mapOf(
                 "items" to merged.distinctBy { (it as? Map<*, *>)?.get("bookUrl") },
                 "pageUrl" to firstPageUrl, "nextUrl" to firstNextUrl, "hasMore" to anyMore,
+                "probe" to probe,
             )
         }
         val reply = request(template, checkLogin = true)
@@ -369,6 +372,16 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         }
         this.book = emptyMap()
         if (!inferNavigation && items.size != nodes.size) throw SourceAccountFailure("书源云书架中有书籍缺少名称或详情地址，未合并到书架")
+        // Rows missing while the reply never mentions the query is a
+        // request-side problem (the charset was dropped, or a verification page
+        // came back), not an empty catalogue. Name the URL that was actually
+        // asked so an empty listing can be told apart from a wrong one.
+        val probe = if (items.isEmpty() && key.isNotBlank() && !reply.body.contains(key)) {
+            "没有返回书目，回复里也找不到「$key」 · HTTP ${reply.status} · ${reply.body.length} 字节" +
+                " · 节点 ${nodes.size} · " +
+                (if (reply.body.contains("<table", ignoreCase = true)) "有表格" else "无表格") +
+                " · ${reply.url}"
+        } else null
         val navigation = if (inferNavigation) SourceDocumentMetadata.parse(reply.body, reply.url)?.navigation() else null
         val explicitNext = values(rules["nextPageUrl"], reply.body).firstNotNullOfOrNull {
             absolute(it, reply.url).takeIf { next -> next.isNotBlank() && next != reply.url }
@@ -390,7 +403,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val hasMore = explicitNext != null || navigation?.nextUrl != null ||
             (navigation?.hasPager != true && items.isNotEmpty() && supportsPages)
         return mapOf("items" to items.distinctBy { it["bookUrl"] }.let { if (reverse) it.reversed() else it },
-            "pageUrl" to reply.url, "nextUrl" to nextUrl, "hasMore" to hasMore)
+            "pageUrl" to reply.url, "nextUrl" to nextUrl, "hasMore" to hasMore, "probe" to probe)
     }
 
     private fun accountVerify(): Boolean {

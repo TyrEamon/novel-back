@@ -216,6 +216,10 @@ class SourceNovelRepository extends ChangeNotifier
   }
 
   final failures = <String, String>{};
+  // What a source actually asked for when a listing came back empty while the
+  // reply never mentioned the query. Kept apart from [failures] so an ordinary
+  // "no hits" answer stays quiet and only a wrong answer gets reported.
+  final _emptyProbes = <String, String>{};
   final _detailWarnings = <int, List<String>>{};
   List<String> detailWarnings(int id) => _detailWarnings[id] ?? const [];
   final _pending = <String, Future<dynamic>>{};
@@ -283,6 +287,7 @@ class SourceNovelRepository extends ChangeNotifier
     _searchQueries.clear();
     _explores.clear();
     failures.clear();
+    _emptyProbes.clear();
     _detailWarnings.clear();
     notifyListeners();
   }
@@ -694,6 +699,12 @@ class SourceNovelRepository extends ChangeNotifier
             store.remember(source, Map<String, dynamic>.from(item)),
         ];
         final fresh = books.where((b) => listing.seen.add(b.id)).toList();
+        final probe = result['probe'];
+        if (probe is String && probe.isNotEmpty && books.isEmpty) {
+          _emptyProbes[source.key] = probe;
+        } else if (books.isNotEmpty) {
+          _emptyProbes.remove(source.key);
+        }
         listing.remotePage++;
         final pageUrl = result['pageUrl'];
         if (pageUrl is String) listing.visited.add(pageUrl);
@@ -793,6 +804,7 @@ class SourceNovelRepository extends ChangeNotifier
       _searchFailed.clear();
       _searchFinished.clear();
       _searchQueries.clear();
+      _emptyProbes.clear();
       _nextSearchSource = 0;
       _cancelScope('search');
     }
@@ -891,8 +903,14 @@ class SourceNovelRepository extends ChangeNotifier
     if (epoch != _searchEpoch || current?.call() == false) {
       throw const SourceFailure('搜索已取消');
     }
-    if (results.every((r) => r.items.isEmpty) && firstError != null) {
-      throw firstError!;
+    if (results.every((r) => r.items.isEmpty)) {
+      if (firstError != null) throw firstError!;
+      // Nothing came back and the engine saw a reply that never mentioned the
+      // query: say which URL was actually asked instead of an empty list.
+      for (final source in candidates) {
+        final probe = _emptyProbes[source.key];
+        if (probe != null && probe.isNotEmpty) throw SourceFailure(probe);
+      }
     }
     final items = [for (final result in results) ...result.items];
     // Source identities stay distinct even when title/author are identical.
