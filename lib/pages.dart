@@ -39,6 +39,7 @@ import 'book_categories.dart';
 import 'bookshelf_scope.dart';
 import 'book_source_badge.dart';
 import 'book_search.dart';
+import 'sources/book_source.dart';
 import 'sources/source_pages.dart';
 import 'sources/source_repository.dart';
 import 'blocked_tags_controls.dart';
@@ -10242,7 +10243,15 @@ class _ReaderPageState extends State<ReaderPage>
   Widget _scrollFailure(Object? error, VoidCallback retry) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      AppText(error is FormatException ? error.message : '章节加载失败'),
+      // Source failures carry the engine's own message; surfacing it is the
+      // only way to tell a dead rule from a network or login problem.
+      AppText(
+        error is FormatException
+            ? error.message
+            : error is SourceFailure
+            ? error.message
+            : '章节加载失败: $error',
+      ),
       if (error case final LocalTextReferenceFailure failure)
         if (widget.repository case final OfflineNovelRepository repo
             when repo.local != null)

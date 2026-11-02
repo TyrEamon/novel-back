@@ -486,7 +486,13 @@ class SourceNovelRepository extends ChangeNotifier
         },
       );
       final text = '$raw';
-      if (text.trim().isEmpty) throw const SourceFailure('正文为空，请检查书源正文规则');
+      if (text.trim().isEmpty) {
+        // Report which content rule was used so an empty body can be told
+        // apart from a missing rule in the source file.
+        final rule = source.data['ruleContent'];
+        final detail = rule is Map ? '${rule['content'] ?? '未配置内容规则'}' : '缺失';
+        throw SourceFailure('正文为空，正文规则：$detail');
+      }
       return text.replaceAllMapped(
         RegExp(r'<!--image-->(.*?)<!--image-->', dotAll: true),
         (m) {
