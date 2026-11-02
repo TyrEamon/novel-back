@@ -131,7 +131,10 @@ class _SourceHomePageState extends State<SourceHomePage> {
       child: CustomScrollView(
         key: PageStorageKey('source-home-${widget.source.key}'),
         physics: const AlwaysScrollableScrollPhysics(),
-        cacheExtent: 250,
+        // Every section fires its own request on first build. Pre-building
+        // offscreen sections would push 30 listings at a rate-limited host at
+        // once, so only materialise what is actually on screen.
+        cacheExtent: 0,
         slivers: [
           SliverPadding(
             padding: EdgeInsets.fromLTRB(
