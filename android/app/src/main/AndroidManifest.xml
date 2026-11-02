@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <application
         android:label="${wenkuAppLabel}"
+        android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         android:name=".WenkuApplication"
         android:fullBackupContent="@xml/backup_rules"
