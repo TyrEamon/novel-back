@@ -372,19 +372,39 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         }
         this.book = emptyMap()
         if (!inferNavigation && items.size != nodes.size) throw SourceAccountFailure("书源云书架中有书籍缺少名称或详情地址，未合并到书架")
-        // Rows missing while the reply never mentions the query is a
-        // request-side problem (the charset was dropped, or a verification page
-        // came back), not an empty catalogue. Name the URL that was actually
-        // asked so an empty listing can be told apart from a wrong one.
-        val probe = if (items.isEmpty() && key.isNotBlank() && !reply.body.contains(key)) {
+        // Empty rows are either a genuinely empty catalogue or the site's
+        // answer to a request it did not like. Name what actually came back —
+        // the page's own title, its first table, how many rows it has and the
+        // text around the query — so the two can be told apart from the app.
+        val probe = if (items.isEmpty()) {
+            val body = reply.body
             val title = Regex("<title[^>]*>([\\s\\S]*?)</title>", setOf(RegexOption.IGNORE_CASE))
-                .find(reply.body)?.groupValues?.get(1)?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
-            "没有返回书目，回复里也找不到「$key」 · HTTP ${reply.status} · ${reply.body.length} 字节" +
-                " · 节点 ${nodes.size} · " +
-                (if (reply.body.contains("<table", ignoreCase = true)) "有表格" else "无表格") +
-                (if (title.isEmpty()) "" else " · 标题「${title.take(60)}」") +
-                " · ${reply.url}"
+                .find(body)?.groupValues?.get(1)?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+            val table = Regex("<table[^>]*>", RegexOption.IGNORE_CASE).find(body)?.value
+                ?.replace(Regex("\\s+"), " ")?.take(64)
+            val around = if (key.isBlank()) {
+                ""
+            } else {
+                val at = body.indexOf(key)
+                if (at < 0) "" else body.substring(maxOf(0, at - 30), minOf(body.length, at + 30))
+                    .replace(Regex("\\s+"), " ").trim()
+            }
+            buildString {
+                append("没有返回书目 · HTTP ").append(reply.status)
+                append(" · ").append(body.length).append(" 字节")
+                append(" · 行 ").append(Regex("<tr", RegexOption.IGNORE_CASE).findAll(body).count())
+                append(" · ").append(table ?: "无表格")
+                if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
+                if (around.isNotEmpty()) append(" · 命中处「").append(around).append("」")
+                else if (key.isNotBlank()) append(" · 正文没有「").append(key).append("」")
+                append(" · ").append(reply.url)
+            }
         } else null
+        // A search the site answered with its login form is not an empty
+        // catalogue: it is a permission answer, and it has a way forward.
+        if (items.isEmpty() && reply.url.contains("login.php", ignoreCase = true)) {
+            throw SourceAccountFailure("搜索需要登录：文库把这次请求转到了登录页。先在书源里登录 wenku8 账号，再回来搜索。")
+        }
         val navigation = if (inferNavigation) SourceDocumentMetadata.parse(reply.body, reply.url)?.navigation() else null
         val explicitNext = values(rules["nextPageUrl"], reply.body).firstNotNullOfOrNull {
             absolute(it, reply.url).takeIf { next -> next.isNotBlank() && next != reply.url }

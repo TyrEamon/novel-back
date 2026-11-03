@@ -162,7 +162,7 @@ internal class SourceDocumentMetadata private constructor(private val document: 
         // page and every listing stays stuck on page one.
         val labelled = document.select("a[href]").filter { anchor ->
             val labels = listOf(anchor.text(), anchor.attr("aria-label"), anchor.attr("title"))
-            labels.any { pageLabel(it) in NEXT_LABELS }
+            labels.any { pageLabel(it) in NEXT_LABELS } && looksLikePager(anchor)
         }
         val next = relNext ?: (pager.asSequence().flatMap { it.select("a[href]").asSequence() } + labelled.asSequence())
             .firstNotNullOfOrNull { anchor ->
@@ -173,9 +173,28 @@ internal class SourceDocumentMetadata private constructor(private val document: 
         // The final page keeps the same label but drops the link; noticing the
         // bare label there is what lets the listing end instead of asking for a
         // page the site will only answer with the one already shown.
-        val labelledOff = document.select("a, span, b, strong, em").any { pageLabel(it.ownText()) in NEXT_LABELS }
+        val labelledOff = document.select("a, span, b, strong, em").any {
+            pageLabel(it.ownText()) in NEXT_LABELS && looksLikePager(it)
+        }
         return Navigation(next, pager.isNotEmpty() || labelled.isNotEmpty() || labelledOff ||
             document.select("link[rel~=prev], a[rel~=prev], link[rel~=next], a[rel~=next]").isNotEmpty())
+    }
+
+    // A "next" label alone is not a pager: banners and menus also say 下一页.
+    // Accept it when the link carries a page-ish parameter, or when it sits in
+    // a container that names itself a pager.
+    private val pagerHref = Regex("[?&](?:page|pagenum|pageNo|p|paged|pageIndex)=", RegexOption.IGNORE_CASE)
+    private fun looksLikePager(node: org.jsoup.nodes.Element?): Boolean {
+        if (node == null) return false
+        if (pagerHref.containsMatchIn(node.attr("href"))) return true
+        var current: org.jsoup.nodes.Element? = node
+        var depth = 0
+        while (current != null && depth < 3) {
+            val hint = "${current.className()} ${current.id()}".lowercase()
+            if ("pag" in hint) return true
+            current = current.parent(); depth++
+        }
+        return false
     }
 
     private fun sameOriginUrl(value: String): String? = runCatching {

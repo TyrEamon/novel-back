@@ -658,6 +658,7 @@ class SourceNovelRepository extends ChangeNotifier
     if (page == 1) {
       final old = _listings.remove(key);
       if (old != null) _cancelListing(old);
+      _emptyProbes.remove(source.key);
     }
     final listing = _listings.putIfAbsent(key, _SourceListing.new);
     if (listing.ended) {
@@ -701,7 +702,9 @@ class SourceNovelRepository extends ChangeNotifier
         final fresh = books.where((b) => listing.seen.add(b.id)).toList();
         final probe = result['probe'];
         if (probe is String && probe.isNotEmpty && books.isEmpty) {
-          _emptyProbes[source.key] = probe;
+          // Keep the first empty answer of a listing: it is the page that was
+          // asked for on purpose, while later attempts are already guesses.
+          _emptyProbes.putIfAbsent(source.key, () => probe);
         } else if (books.isNotEmpty) {
           _emptyProbes.remove(source.key);
         }
