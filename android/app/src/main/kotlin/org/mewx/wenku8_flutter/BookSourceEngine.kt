@@ -403,6 +403,10 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 append(" · ").append(body.length).append(" 字节")
                 append(" · 行 ").append(Regex("<tr", RegexOption.IGNORE_CASE).findAll(body).count())
                 append("/格 ").append(Regex("<td", RegexOption.IGNORE_CASE).findAll(body).count())
+                // Book links anywhere in the page: zero means the site really
+                // sent no books; non-zero means they sit in a container the rule
+                // does not reach yet.
+                append("/书 ").append(Regex("href=\"[^\"]*/book/", RegexOption.IGNORE_CASE).findAll(body).count())
                 append(" · ").append(table ?: "无表格")
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
                 // Which page state arrived matters more than any selector: a
