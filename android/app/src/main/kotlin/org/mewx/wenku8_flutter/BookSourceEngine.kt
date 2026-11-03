@@ -408,6 +408,17 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 // does not reach yet.
                 append("/书 ").append(Regex("href=\"[^\"]*/book/", RegexOption.IGNORE_CASE).findAll(body).count())
                 append(" · ").append(table ?: "无表格")
+                // Nodes the list rule matched and what came out of the first one:
+                // an empty node set and an all-blank row need different fixes, and
+                // this is the only place that difference is visible.
+                append(" · 节点 ").append(nodes.size)
+                if (nodes.isNotEmpty()) {
+                    val sampleName = runCatching { field(rules, "name", nodes.first()) }.getOrDefault("")
+                    val sampleUrl = runCatching {
+                        absolute(field(rules, "bookUrl", nodes.first()), reply.url)
+                    }.getOrDefault("")
+                    append(" · 首项「").append(sampleName.take(24)).append("」→").append(sampleUrl.take(56))
+                }
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
                 // Which page state arrived matters more than any selector: a
                 // logged-out reader and a genuinely empty result both come back
