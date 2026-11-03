@@ -220,6 +220,16 @@ class SourceNovelRepository extends ChangeNotifier
   // reply never mentioned the query. Kept apart from [failures] so an ordinary
   // "no hits" answer stays quiet and only a wrong answer gets reported.
   final _emptyProbes = <String, String>{};
+
+  // A probe belongs to the listing that produced it. A challenge page served to
+  // the explore feed says nothing about the search the reader just typed, and
+  // reporting it as a search failure sends them chasing the wrong URL.
+  String _probeKey(
+    BookSource source,
+    String operation,
+    String term,
+    Object scope,
+  ) => '${source.key}|$operation|$scope|$term';
   // Sources that answer a second search in a row with "wait a few seconds and
   // nothing else" declare their own gap; the wait is per source, in seconds.
   final _searchPaced = <String, DateTime>{};
@@ -669,10 +679,11 @@ class SourceNovelRepository extends ChangeNotifier
     bool Function()? current,
   }) async {
     final key = _listingKey(source, operation, term, scope ?? operation);
+    final probeKey = _probeKey(source, operation, term, scope ?? operation);
     if (page == 1) {
       final old = _listings.remove(key);
       if (old != null) _cancelListing(old);
-      _emptyProbes.remove(source.key);
+      _emptyProbes.remove(probeKey);
     }
     final listing = _listings.putIfAbsent(key, _SourceListing.new);
     if (listing.ended) {
@@ -722,9 +733,9 @@ class SourceNovelRepository extends ChangeNotifier
       final fresh = books.where((b) => listing.seen.add(b.id)).toList();
       final probe = result['probe'];
       if (probe is String && probe.isNotEmpty) {
-        _emptyProbes.putIfAbsent(source.key, () => probe);
+        _emptyProbes.putIfAbsent(probeKey, () => probe);
       } else if (books.isNotEmpty) {
-        _emptyProbes.remove(source.key);
+        _emptyProbes.remove(probeKey);
       }
       final pageUrl = result['pageUrl'];
       if (pageUrl is String) listing.visited.add(pageUrl);
@@ -835,6 +846,10 @@ class SourceNovelRepository extends ChangeNotifier
     final results = <NovelPage>[];
     final attempted = <_SourceQuery>{};
     final deferred = <String>{};
+    // Only probes raised by this search's own requests, keyed by source, so a
+    // stale challenge page from another feed can never be reported as a search
+    // failure.
+    final searchProbes = <String, String>{};
     Object? firstError;
     // Round-robin source batches publish a usable first page without waiting
     // for hundreds of imported sources. Each source retains its own page cursor.
@@ -896,6 +911,17 @@ class SourceNovelRepository extends ChangeNotifier
             if (epoch != _searchEpoch || _searchKey != searchKey) {
               throw const SourceFailure('搜索已取消');
             }
+            final probe = _emptyProbes[_probeKey(
+              source,
+              query.operation,
+              query.term,
+              'search',
+            )];
+            if (probe != null && probe.isNotEmpty) {
+              searchProbes[source.key] = probe;
+            } else {
+              searchProbes.remove(source.key);
+            }
             results.add(
               NovelPage(
                 items: result.items
@@ -931,7 +957,7 @@ class SourceNovelRepository extends ChangeNotifier
       // Nothing came back and the engine saw a reply that never mentioned the
       // query: say which URL was actually asked instead of an empty list.
       for (final source in candidates) {
-        final probe = _emptyProbes[source.key];
+        final probe = searchProbes[source.key];
         if (probe != null && probe.isNotEmpty) throw SourceFailure(probe);
       }
     }
@@ -940,7 +966,7 @@ class SourceNovelRepository extends ChangeNotifier
       // One row out of a twenty-row page is a rule bug. The engine describes it;
       // a single quiet book would only hide it until the next report.
       for (final source in candidates) {
-        final probe = _emptyProbes[source.key];
+        final probe = searchProbes[source.key];
         if (probe != null && probe.isNotEmpty) throw SourceFailure(probe);
       }
     }

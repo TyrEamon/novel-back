@@ -730,18 +730,21 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         for (attempt in 0..if (retryAllowed) spec.retry.coerceIn(0, 10) else 0) {
             run.countRequest()
             if (!plan.skipRateLimit) SourceRateLimit.await(source["bookSourceUrl"].toString(), run.state.get("source", "__concurrentRate").ifEmpty { source["concurrentRate"]?.toString().orEmpty() }, run)
+            // A challenge that is still running needs more time than an ordinary
+            // load, so the retry waits longer than the source asked for.
+            val webDelay = if (attempt > 0) maxOf(spec.webViewDelayTime, 4500L) else spec.webViewDelayTime
             try {
                 val r = if (binary) {
                     run.fetchBytes?.invoke(spec.requestUrl(), spec.method.name, headers, body, options)
                         ?: run.fetch(spec.requestUrl(), spec.method.name, headers, body)
                 } else if (!forceHttp && spec.useWebView && spec.method != org.mewx.wenku8_flutter.legado.RequestMethod.POST) {
                     (run.web ?: error("书源网页脚本服务不可用"))(SourceWebRequest(spec.requestUrl(), script = spec.webJs,
-                        headers = headers, delay = spec.webViewDelayTime))
+                        headers = headers, delay = webDelay))
                 } else (run.fetchOptions?.invoke(spec.requestUrl(), spec.method.name, headers, body, options)
                     ?: run.fetch(spec.requestUrl(), spec.method.name, headers, body)).let { response ->
                     if (!forceHttp && spec.useWebView && !(spec.followRedirects == false && response.status in 300..399)) {
                         (run.web ?: error("书源网页脚本服务不可用"))(SourceWebRequest(response.url, html = response.body,
-                            script = spec.webJs, headers = headers, delay = spec.webViewDelayTime))
+                            script = spec.webJs, headers = headers, delay = webDelay))
                     } else response
                 }
                 // The site answers a burst with 429 and serves normally once
@@ -749,6 +752,10 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 // the next iteration waits on the rate limit before asking again.
                 reply = r
                 if (retryAllowed && attempt < spec.retry.coerceIn(0, 10) && r.status in setOf(429, 503)) continue
+                // Cloudflare serves its "请稍候" interstitial while the challenge
+                // is still being solved. That is not the page the source asked
+                // for, so look again instead of parsing the waiting room.
+                if (retryAllowed && attempt < spec.retry.coerceIn(0, 10) && r.status in 200..299 && looksLikeChallenge(r.body)) continue
                 break
             } catch (e: CancellationException) { throw e }
             catch (e: SourceHeaderFailure) { throw e }
@@ -756,6 +763,17 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         }
         return (reply ?: throw (failure ?: IllegalStateException("书源请求未完成")))
             .copy(callTime = ((System.nanoTime() - start) / 1_000_000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+    }
+    // Cloudflare's waiting room: served with status 200 and a page title of
+    // "请稍候…" while the browser challenge is still running. Matching on the
+    // challenge markers, not on the title, keeps ordinary pages out of it.
+    private fun looksLikeChallenge(body: String): Boolean {
+        if (body.isEmpty() || body.length > 400_000) return false
+        val head = body.substring(0, minOf(body.length, 4096))
+        return head.contains("__cf_chl_opt") || head.contains("cf-browser-verification") ||
+            head.contains("请稍候") || head.contains("Just a moment", ignoreCase = true) ||
+            head.contains("Checking your browser", ignoreCase = true) ||
+            head.contains("cf-please-wait", ignoreCase = true)
     }
     private fun finishResponse(plan: RequestPlan, raw: SourceReply): SourceReply {
         val spec = plan.spec
