@@ -1036,7 +1036,14 @@ class _SourceDebugPageState extends State<SourceDebugPage> {
       final items = result['items'] as List;
       if (!mounted || ticket != _ticket) return;
       line('搜索 · ${items.length} 本作品');
+      // The page's own numbers, straight from the engine, so a source that
+      // looks like it has one book per page can be told apart from one whose
+      // cards all collapse onto the same address.
+      final probe = result['probe'];
+      if (probe is String && probe.isNotEmpty) line(probe);
       if (items.isEmpty) return;
+      final head = Map<String, dynamic>.from(items.first);
+      line('首条 · ${head['name'] ?? '空'} · ${head['bookUrl'] ?? '空'}');
       final book = <String, dynamic>{
         ...Map<String, dynamic>.from(items.first),
         'origin': source.key,

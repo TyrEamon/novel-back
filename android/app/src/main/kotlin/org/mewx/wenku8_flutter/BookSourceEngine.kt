@@ -363,7 +363,15 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             rowVariables = SourceState(); rowEntity = "book"
             val name = field(rules, "name", node)
             this.book = this.book + ("name" to name)
-            val bookUrl = absolute(field(rules, "bookUrl", node), reply.url)
+            val linked = absolute(field(rules, "bookUrl", node), reply.url)
+            // A card link comes off the page without the source's request
+            // options, so opening the book would be a plain HTTP request and
+            // meet the challenge page instead of the book. Carry them over
+            // unless the rule already attached its own.
+            val bookUrl = if (linked.isBlank() || inheritedOptions == null ||
+                !inheritedOptions.contains("webView", true) ||
+                org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(linked, 2).size > 1
+            ) linked else "$linked,$inheritedOptions"
             this.book = this.book + ("bookUrl" to bookUrl)
             val item = if (name.isBlank() || bookUrl.isBlank()) null else linkedMapOf<String, Any?>(
                 "name" to name, "bookUrl" to bookUrl,
@@ -518,7 +526,16 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                     " · 行 ${it.select("table.grid tr").size}" +
                     " · 格内块 ${it.select("table.grid td > div").size}"
             } ?: "表格 解析失败"
+            // The decisive number: twenty rows that resolve to one address are
+            // a rule-chain problem, twenty rows that resolve to twenty are a
+            // selection problem. Reading it beats guessing which one it is.
+            val urls = nodes.take(24).mapNotNull { node ->
+                runCatching { absolute(field(rules, "bookUrl", node), reply.url) }
+                    .getOrNull()?.takeIf { it.isNotBlank() }
+            }
             "书目 ${items.size}/${nodes.size} · 书页链接 $bookLinks · 首节点 $first · $shape" +
+                " · 地址 ${urls.distinct().size}/${urls.size}" +
+                " · 首书 ${urls.firstOrNull()?.take(64) ?: "空"}" +
                 " · 源版本 ${source["ruleRevision"] ?: "?"}" +
                 " · 规则「${(rules["bookList"]?.toString() ?: "").take(48)}」"
         } else null
