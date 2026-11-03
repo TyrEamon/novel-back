@@ -502,6 +502,18 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             }
             "书目 ${items.size}/${nodes.size} · $heads"
         } else null
+        // The page carries a shelf of books but the list rule found next to
+        // nothing: say what it did match, otherwise a mis-selector looks like a
+        // site that has one book per page.
+        val bookLinks = Regex("/book/\\d+\\.htm").findAll(reply.body).count()
+        val listShape = if (items.size <= 4 && bookLinks >= 5) {
+            val first = nodes.firstOrNull().let { node ->
+                (node as? org.jsoup.nodes.Element)?.let {
+                    "${it.tagName()}.${it.className().ifBlank { "-" }}/${it.childrenSize()}"
+                } ?: node?.toString()?.take(24) ?: "无"
+            }
+            "书目 ${items.size}/${nodes.size} · 书页链接 $bookLinks · 首节点 $first"
+        } else null
         // A search the site answered with its login form is not an empty
         // catalogue: it is a permission answer, and it has a way forward.
         if (items.isEmpty() && reply.url.contains("login.php", ignoreCase = true)) {
@@ -527,7 +539,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             (navigation?.hasPager != true && items.isNotEmpty() && supportsPages)
         return mapOf("items" to items.distinctBy { it["bookUrl"] }.let { if (reverse) it.reversed() else it },
             "pageUrl" to reply.url, "nextUrl" to nextUrl, "hasMore" to hasMore,
-            "probe" to (probe ?: shortListing))
+            "probe" to (probe ?: shortListing ?: listShape))
     }
 
     private fun accountVerify(): Boolean {
