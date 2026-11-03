@@ -94,7 +94,13 @@ class AnalyzeByJSoup(doc: Any) {
             val ruleStrS = ruleAnalyzes.splitRule("&&", "||", "%%")
 
             val results = ArrayList<List<String>>()
-            for (ruleStrX in ruleStrS) {
+            for (rawRule in ruleStrS) {
+                // A rule like "@text || @ownText" splits into segments that keep
+                // the spaces around the separator, and the extractor name is
+                // matched exactly further down ("text" != "text "), so an
+                // untrimmed segment silently yields nothing.
+                val ruleStrX = rawRule.trim()
+                if (ruleStrX.isEmpty()) continue
 
                 val temp: ArrayList<String>? =
                     if (sourceRule.isCss) {
@@ -215,7 +221,7 @@ class AnalyzeByJSoup(doc: Any) {
 
         rule.trim() //修建前置赘余符号
 
-        val rules = rule.splitRule("@") // 切割成列表
+        val rules = rule.splitRule("@").map { it.trim() }
 
         val last = rules.size - 1
         for (i in 0 until last) {
