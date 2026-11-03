@@ -677,6 +677,7 @@ class SourceNovelRepository extends ChangeNotifier
     bool refresh, {
     Object? scope,
     bool Function()? current,
+    String? template,
   }) async {
     final key = _listingKey(source, operation, term, scope ?? operation);
     final probeKey = _probeKey(source, operation, term, scope ?? operation);
@@ -719,7 +720,9 @@ class SourceNovelRepository extends ChangeNotifier
       final raw = await platform.run(
         source,
         operation,
-        url: listing.nextUrl ?? (operation == 'explore' ? term : null),
+        url: listing.nextUrl ??
+            template ??
+            (operation == 'explore' ? term : null),
         key: operation == 'search' ? term : '',
         page: listing.remotePage + 1,
         requestId: request,
@@ -812,6 +815,7 @@ class SourceNovelRepository extends ChangeNotifier
       ],
       page: page,
       refresh: refresh,
+      templateFor: (source) => _searchTemplateFor(source, field),
       accept: (book) => pattern.matches(
         title: book.title,
         author: book.author,
@@ -822,6 +826,23 @@ class SourceNovelRepository extends ChangeNotifier
     );
   }
 
+  // Which line of a multi-line searchUrl a search field should use. A site that
+  // counts every line as one search answers the second line with "wait five
+  // seconds", so asking both lines for one query means the second always fails.
+  String? _searchTemplateFor(BookSource source, BookSearchField field) {
+    final declared = source.data['searchFields'];
+    if (declared is! Map) return null;
+    final index = declared[field.name];
+    if (index is! num) return null;
+    final lines = [
+      for (final line in '${source.data['searchUrl'] ?? ''}'.split('\n'))
+        if (line.trim().isNotEmpty) line.trim(),
+    ];
+    final at = index.toInt();
+    if (at < 0 || at >= lines.length) return null;
+    return lines[at];
+  }
+
   Future<NovelPage> _aggregateSearch({
     required Object searchKey,
     required List<BookSource> candidates,
@@ -830,6 +851,7 @@ class SourceNovelRepository extends ChangeNotifier
     required bool refresh,
     bool Function()? current,
     bool Function(Novel)? accept,
+    String? Function(BookSource source)? templateFor,
   }) async {
     if (_searchKey != searchKey || page == 1) {
       await cancelSearch();
@@ -907,6 +929,7 @@ class SourceNovelRepository extends ChangeNotifier
               refresh,
               scope: 'search',
               current: current,
+              template: templateFor?.call(source),
             );
             if (epoch != _searchEpoch || _searchKey != searchKey) {
               throw const SourceFailure('搜索已取消');
