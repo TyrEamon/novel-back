@@ -389,6 +389,11 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 if (at < 0) "" else body.substring(maxOf(0, at - 30), minOf(body.length, at + 30))
                     .replace(Regex("\\s+"), " ").trim()
             }
+            // The site usually says why: "两次搜索的间隔时间不得少于 5 秒" and the
+            // like. Repeat it verbatim; a paraphrase hides the one line that
+            // tells the reader what to do next.
+            val notice = Regex("错误原因[:：]\\s*([^<\\r\\n]{0,80})", RegexOption.IGNORE_CASE)
+                .find(body)?.groupValues?.get(1)?.replace(Regex("\\s+"), " ")?.trim()
             // Cookie names only: whether this request even carried a session is
             // the first thing to know when a listing comes back empty.
             val cookieNames = runCatching { run.cookieRead(reply.url) }.getOrDefault("")
@@ -399,6 +404,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 append(" · 行 ").append(Regex("<tr", RegexOption.IGNORE_CASE).findAll(body).count())
                 append(" · ").append(table ?: "无表格")
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
+                if (!notice.isNullOrEmpty()) append(" · 站点说「").append(notice).append("」")
                 if (around.isNotEmpty()) append(" · 命中处「").append(around).append("」")
                 else if (key.isNotBlank()) append(" · 正文没有「").append(key).append("」")
                 append(" · Cookie ").append(

@@ -220,6 +220,20 @@ class SourceNovelRepository extends ChangeNotifier
   // reply never mentioned the query. Kept apart from [failures] so an ordinary
   // "no hits" answer stays quiet and only a wrong answer gets reported.
   final _emptyProbes = <String, String>{};
+  // Sources that answer a second search in a row with "wait a few seconds and
+  // nothing else" declare their own gap; the wait is per source, in seconds.
+  final _searchPaced = <String, DateTime>{};
+  Future<void> _paceSearch(BookSource source) async {
+    final declared = source.data['searchInterval'];
+    if (declared is! num || declared <= 0) return;
+    final gap = Duration(milliseconds: (declared * 1000).round());
+    final last = _searchPaced[source.key];
+    if (last != null) {
+      final wait = gap - DateTime.now().difference(last);
+      if (wait > Duration.zero) await Future<void>.delayed(wait);
+    }
+    _searchPaced[source.key] = DateTime.now();
+  }
   final _detailWarnings = <int, List<String>>{};
   List<String> detailWarnings(int id) => _detailWarnings[id] ?? const [];
   final _pending = <String, Future<dynamic>>{};
@@ -677,62 +691,68 @@ class SourceNovelRepository extends ChangeNotifier
       }
     }
 
-    // A duplicate/filtered server page is not the end of a collection. Follow
-    // its cursor before publishing, without letting a broken source loop forever.
-    for (var attempt = 0; attempt < 8; attempt++) {
-      final request = 'source-${++_nextRequest}';
-      listing.requests.add(request);
-      if (isSearch) _searchRequests.add(request);
-      try {
+    // One call asks the site for exactly one page, which is what the reader
+    // shows: page one, then the next one when the list is scrolled to the end.
+    // A page that yields no book we have not already seen is the end of the
+    // listing — asking again would walk the page number forward on its own and
+    // spend the site's rate limit on pages nobody asked for.
+    final request = 'source-${++_nextRequest}';
+    listing.requests.add(request);
+    if (isSearch) _searchRequests.add(request);
+    try {
+      checkCurrent(request);
+      if (operation == 'search') {
+        await _paceSearch(source);
         checkCurrent(request);
-        final raw = await platform.run(
-          source,
-          operation,
-          url: listing.nextUrl ?? (operation == 'explore' ? term : null),
-          key: operation == 'search' ? term : '',
-          page: listing.remotePage + 1,
-          requestId: request,
-        );
-        checkCurrent(request);
-        final result = Map<String, dynamic>.from(raw as Map);
-        final books = [
-          for (final item in result['items'] as List)
-            store.remember(source, Map<String, dynamic>.from(item)),
-        ];
-        final fresh = books.where((b) => listing.seen.add(b.id)).toList();
-        final probe = result['probe'];
-        if (probe is String && probe.isNotEmpty && books.isEmpty) {
-          // Keep the first empty answer of a listing: it is the page that was
-          // asked for on purpose, while later attempts are already guesses.
-          _emptyProbes.putIfAbsent(source.key, () => probe);
-        } else if (books.isNotEmpty) {
-          _emptyProbes.remove(source.key);
-        }
+      }
+      final raw = await platform.run(
+        source,
+        operation,
+        url: listing.nextUrl ?? (operation == 'explore' ? term : null),
+        key: operation == 'search' ? term : '',
+        page: listing.remotePage + 1,
+        requestId: request,
+      );
+      checkCurrent(request);
+      final result = Map<String, dynamic>.from(raw as Map);
+      final books = [
+        for (final item in result['items'] as List)
+          store.remember(source, Map<String, dynamic>.from(item)),
+      ];
+      final fresh = books.where((b) => listing.seen.add(b.id)).toList();
+      final probe = result['probe'];
+      if (probe is String && probe.isNotEmpty && books.isEmpty) {
+        _emptyProbes.putIfAbsent(source.key, () => probe);
+      } else if (books.isNotEmpty) {
+        _emptyProbes.remove(source.key);
+      }
+      final pageUrl = result['pageUrl'];
+      if (pageUrl is String) listing.visited.add(pageUrl);
+      final next = result['nextUrl'];
+      listing.nextUrl = next is String && next.isNotEmpty ? next : null;
+      if (fresh.isEmpty) {
+        listing.ended = true;
+      } else {
         listing.remotePage++;
-        final pageUrl = result['pageUrl'];
-        if (pageUrl is String) listing.visited.add(pageUrl);
-        final next = result['nextUrl'];
-        listing.nextUrl = next is String && next.isNotEmpty ? next : null;
         listing.ended =
             result['hasMore'] == false ||
             (listing.nextUrl != null &&
                 listing.visited.contains(listing.nextUrl));
-        if (fresh.isNotEmpty || listing.ended) {
-          await store.flush();
-          checkCurrent(request);
-          failures.remove(source.key);
-          return NovelPage(
-            items: fresh,
-            page: page,
-            totalPages: listing.ended ? page : page + 1,
-          );
-        }
-      } finally {
-        listing.requests.remove(request);
-        _searchRequests.remove(request);
       }
+      if (fresh.isNotEmpty) {
+        await store.flush();
+        checkCurrent(request);
+      }
+      failures.remove(source.key);
+      return NovelPage(
+        items: fresh,
+        page: page,
+        totalPages: listing.ended ? page : page + 1,
+      );
+    } finally {
+      listing.requests.remove(request);
+      _searchRequests.remove(request);
     }
-    throw const SourceFailure('连续多个分页没有返回新书目，请检查书源分页规则');
   }
 
   @override
