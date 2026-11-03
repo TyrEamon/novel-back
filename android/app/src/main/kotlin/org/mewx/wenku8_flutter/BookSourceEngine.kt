@@ -389,6 +389,10 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 if (at < 0) "" else body.substring(maxOf(0, at - 30), minOf(body.length, at + 30))
                     .replace(Regex("\\s+"), " ").trim()
             }
+            // Cookie names only: whether this request even carried a session is
+            // the first thing to know when a listing comes back empty.
+            val cookieNames = runCatching { run.cookieRead(reply.url) }.getOrDefault("")
+                .split(';').map { it.trim().substringBefore('=') }.filter { it.isNotEmpty() }
             buildString {
                 append("没有返回书目 · HTTP ").append(reply.status)
                 append(" · ").append(body.length).append(" 字节")
@@ -397,6 +401,9 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
                 if (around.isNotEmpty()) append(" · 命中处「").append(around).append("」")
                 else if (key.isNotBlank()) append(" · 正文没有「").append(key).append("」")
+                append(" · Cookie ").append(
+                    if (cookieNames.isEmpty()) "无" else "${cookieNames.size} 项 ${cookieNames.take(6).joinToString(",")}",
+                )
                 append(" · ").append(reply.url)
             }
         } else null

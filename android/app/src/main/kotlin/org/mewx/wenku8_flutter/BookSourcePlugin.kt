@@ -316,26 +316,7 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 }
             },
         )
-        seedWebsiteSession(key)
         return run
-    }
-
-    /**
-     * The site's own login lives in the account store, while every source keeps
-     * a private cookie jar. A source pointed at the same site therefore browses
-     * as a guest: wenku8 answers a guest search with its login form and nothing
-     * else, so the search box looks broken. Carry the stored website session
-     * into the source jar, once, unless that source already logged in itself.
-     */
-    private fun seedWebsiteSession(key: String) {
-        val host = Uri.parse(key).host?.takeIf { it.isNotBlank() } ?: return
-        if (!host.equals("wenku8.net", true) && !host.endsWith(".wenku8.net", true)) return
-        if (network.hasCookies(key)) return
-        val stored = runCatching { AccountSessionStore(context, "web").read() }.getOrNull() ?: return
-        val session = runCatching { ApiSessionCookies.fromStored(stored, requireSession = false) }
-            .getOrNull()?.websiteSession() ?: return
-        if (!session.hasWebLogin) return
-        runCatching { network.setCookie(key, key, session.header()) }
     }
     private fun image(args: Map<String, Any?>): ByteArray {
         val identity = "${args["sourceKey"]}\n${args["url"]}"
