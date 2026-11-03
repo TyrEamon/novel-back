@@ -1070,11 +1070,20 @@ class SourceNovelRepository extends ChangeNotifier
     return _aggregateSearch(
       searchKey: (tag ? 'tag' : 'author', label, searchSource),
       candidates: enabled
+          .where((s) => s.searchable)
           .where((s) => searchSource == null || s.key == searchSource)
           .toList(),
       page: page,
       refresh: refresh,
       current: current,
+      // An author page is still a search on this site, and it has its own
+      // line in searchUrl. Without this the request falls back to the whole
+      // two-line template, so asking for an author first asks for a title and
+      // gets nothing back.
+      templateFor: (source) => _searchTemplateFor(
+        source,
+        tag ? BookSearchField.tags : BookSearchField.author,
+      ),
       resolve: (source) async {
         String? link(Novel b) => tag
             ? b.tagUrls.entries

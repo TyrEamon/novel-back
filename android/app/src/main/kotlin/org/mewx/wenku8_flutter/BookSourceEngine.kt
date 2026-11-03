@@ -373,10 +373,15 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(linked, 2).size > 1
             ) linked else "$linked,$inheritedOptions"
             this.book = this.book + ("bookUrl" to bookUrl)
+            // The shelf table carries no image at all, so a book merged from it
+            // keeps a blank cover until someone opens it. A source can name the
+            // address pattern instead of an element.
+            val cover = absolute(field(rules, "coverUrl", node), reply.url)
+                .ifBlank { coverFromTemplate(rules["coverUrlTemplate"], bookUrl) }
             val item = if (name.isBlank() || bookUrl.isBlank()) null else linkedMapOf<String, Any?>(
                 "name" to name, "bookUrl" to bookUrl,
                 "author" to SourceDocumentMetadata.authorName(field(rules, "author", node)), "kind" to values(rules["kind"], node).joinToString(","),
-                "intro" to field(rules, "intro", node), "coverUrl" to absolute(field(rules, "coverUrl", node), reply.url),
+                "intro" to field(rules, "intro", node), "coverUrl" to cover,
                 "lastChapter" to field(rules, "lastChapter", node),
             )
             if (item != null) saveRowVariables("book:$bookUrl")
@@ -1919,6 +1924,16 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 SourceNetwork.url(resolved.toString())
                 resolved.toString() + if (parts.size > 1) ",${parts[1]}" else ""
             } catch (_: Exception) { "" }
+        }
+        // Some listings hold no image at all (the site's shelf table is only
+        // checkbox, title, author, date), so the cover address pattern is the
+        // only thing a source can state. {{id}} is the book number in its URL,
+        // {{id1000}} the directory bucket the site files it under.
+        fun coverFromTemplate(template: Any?, bookUrl: String): String {
+            val pattern = template?.toString()?.takeIf { it.isNotBlank() } ?: return ""
+            val id = Regex("/book/(\\d+)\\.htm").find(bookUrl)?.groupValues?.get(1) ?: return ""
+            val number = id.toLongOrNull() ?: return ""
+            return pattern.replace("{{id1000}}", (number / 1000).toString()).replace("{{id}}", id)
         }
         fun markup(html: String, base: String): String {
             val root = Jsoup.parseBodyFragment(html, base).body()
