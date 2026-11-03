@@ -512,7 +512,15 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                     "${it.tagName()}.${it.className().ifBlank { "-" }}/${it.childrenSize()}"
                 } ?: node?.toString()?.take(24) ?: "无"
             }
-            "书目 ${items.size}/${nodes.size} · 书页链接 $bookLinks · 首节点 $first"
+            val page = runCatching { org.jsoup.Jsoup.parse(reply.body) }.getOrNull()
+            val shape = page?.let {
+                "表格 ${it.select("table").size}/grid ${it.select("table.grid").size}" +
+                    " · 行 ${it.select("table.grid tr").size}" +
+                    " · 格内块 ${it.select("table.grid td > div").size}"
+            } ?: "表格 解析失败"
+            "书目 ${items.size}/${nodes.size} · 书页链接 $bookLinks · 首节点 $first · $shape" +
+                " · 源版本 ${source["ruleRevision"] ?: "?"}" +
+                " · 规则「${(rules["bookList"]?.toString() ?: "").take(48)}」"
         } else null
         // A search the site answered with its login form is not an empty
         // catalogue: it is a permission answer, and it has a way forward.
