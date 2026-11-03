@@ -426,8 +426,13 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                     val first = nodes.first()
                     append(" · 名[").append(names.joinToString(" | ")).append(']')
                     append(" · 名义空 ").append(blankNames).append('/').append(nodes.size)
-                    append(" · 节点 ").append(first.tagName()).append('.')
-                        .append(first.className().take(20).ifBlank { "-" })
+                    // The list rule hands back Any?, so identify the element
+                    // defensively instead of assuming a jsoup type.
+                    val shape = runCatching {
+                        val element = first as org.jsoup.nodes.Element
+                        element.tagName() + "." + element.className().take(20).ifBlank { "-" }
+                    }.getOrElse { first.toString().take(24) }
+                    append(" · 节点 ").append(shape.take(28))
                     val sampleUrl = runCatching {
                         absolute(field(rules, "bookUrl", first), reply.url)
                     }.getOrDefault("")
