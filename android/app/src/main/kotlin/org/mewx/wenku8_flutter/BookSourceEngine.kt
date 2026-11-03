@@ -413,11 +413,25 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 // this is the only place that difference is visible.
                 append(" · 节点 ").append(nodes.size)
                 if (nodes.isNotEmpty()) {
-                    val sampleName = runCatching { field(rules, "name", nodes.first()) }.getOrDefault("")
+                    // What each node actually yields: "the list rule matched
+                    // twenty rows but the name rule returns nothing" and "the
+                    // list rule matched nothing" look identical in the report
+                    // unless the values themselves are printed.
+                    val names = nodes.take(3).map { node ->
+                        runCatching { field(rules, "name", node) }.getOrDefault("").ifBlank { "空" }
+                    }
+                    val blankNames = nodes.count {
+                        runCatching { field(rules, "name", it) }.getOrDefault("").isBlank()
+                    }
+                    val first = nodes.first()
+                    append(" · 名[").append(names.joinToString(" | ")).append(']')
+                    append(" · 名义空 ").append(blankNames).append('/').append(nodes.size)
+                    append(" · 节点 ").append(first.tagName()).append('.')
+                        .append(first.className().take(20).ifBlank { "-" })
                     val sampleUrl = runCatching {
-                        absolute(field(rules, "bookUrl", nodes.first()), reply.url)
+                        absolute(field(rules, "bookUrl", first), reply.url)
                     }.getOrDefault("")
-                    append(" · 首项「").append(sampleName.take(24)).append("」→").append(sampleUrl.take(56))
+                    append(" · 首项→").append(sampleUrl.take(56))
                 }
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
                 // Which page state arrived matters more than any selector: a
