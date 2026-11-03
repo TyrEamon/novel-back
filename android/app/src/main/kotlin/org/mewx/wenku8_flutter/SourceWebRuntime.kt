@@ -179,7 +179,12 @@ internal class SourceWebRenderer(
             allowFileAccess = false; allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            cacheMode = if (request.cacheFirst) WebSettings.LOAD_CACHE_ELSE_NETWORK else WebSettings.LOAD_DEFAULT
+            // A source asks for a page, not for a copy of one it happens to
+            // remember: these pages carry no cache headers, so the default mode
+            // would hand back an earlier answer (including an empty one from a
+            // build that had the rules wrong) long after the site changed its
+            // mind. Only an explicit cacheFirst request may read the store.
+            cacheMode = if (request.cacheFirst) WebSettings.LOAD_CACHE_ELSE_NETWORK else WebSettings.LOAD_NO_CACHE
             request.headers.entries.firstOrNull { it.key.equals("User-Agent", true) }?.let { userAgentString = it.value }
         }
         if (request.browserSheet) {

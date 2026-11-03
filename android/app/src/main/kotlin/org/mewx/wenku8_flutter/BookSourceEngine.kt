@@ -501,6 +501,13 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 append(" · Cookie ").append(
                     if (cookieNames.isEmpty()) "无" else "${cookieNames.size} 项 ${cookieNames.joinToString(",")}",
                 )
+                // A 302 to somewhere else is the single most useful thing a
+                // reader can be told here: the page that arrived is not the page
+                // that was asked for, and its rules are someone else's.
+                val askedPath = template.substringBefore('?').trim()
+                if (askedPath.isNotEmpty() && !reply.url.startsWith(askedPath, ignoreCase = true)) {
+                    append(" · 跳到 ").append(reply.url.take(96))
+                }
                 append(" · ").append(reply.url)
             }
         } else null
@@ -519,7 +526,20 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         // nothing: say what it did match, otherwise a mis-selector looks like a
         // site that has one book per page.
         val bookLinks = Regex("/book/\\d+\\.htm").findAll(reply.body).count()
-        val listShape = if (items.size <= 4 && bookLinks >= 5) {
+        // The decisive number: rows that resolve to the same address are a
+        // rule-chain problem, rows that resolve to different ones are a
+        // selection problem. Reading it beats guessing which one it is.
+        val resolvedUrls = nodes.take(24).mapNotNull { node ->
+            runCatching { absolute(field(rules, "bookUrl", node), reply.url) }
+                .getOrNull()?.takeIf { it.isNotBlank() }
+        }
+        val collapsedRows = resolvedUrls.size > 1 && resolvedUrls.distinct().size < resolvedUrls.size
+        // A short listing is only worth reporting when it contradicts the page:
+        // rows that all landed on one address, or a page full of book links that
+        // produced no row at all. Three rows that resolve to three different
+        // books are simply a three-result search, and calling that a fault turned
+        // real answers into "搜索失败".
+        val listShape = if (nodes.isNotEmpty() && bookLinks >= 5 && (items.isEmpty() || collapsedRows)) {
             val first = nodes.firstOrNull().let { node ->
                 (node as? org.jsoup.nodes.Element)?.let {
                     "${it.tagName()}.${it.className().ifBlank { "-" }}/${it.childrenSize()}"
@@ -531,16 +551,9 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                     " · 行 ${it.select("table.grid tr").size}" +
                     " · 格内块 ${it.select("table.grid td > div").size}"
             } ?: "表格 解析失败"
-            // The decisive number: twenty rows that resolve to one address are
-            // a rule-chain problem, twenty rows that resolve to twenty are a
-            // selection problem. Reading it beats guessing which one it is.
-            val urls = nodes.take(24).mapNotNull { node ->
-                runCatching { absolute(field(rules, "bookUrl", node), reply.url) }
-                    .getOrNull()?.takeIf { it.isNotBlank() }
-            }
             "书目 ${items.size}/${nodes.size} · 书页链接 $bookLinks · 首节点 $first · $shape" +
-                " · 地址 ${urls.distinct().size}/${urls.size}" +
-                " · 首书 ${urls.firstOrNull()?.take(64) ?: "空"}" +
+                " · 地址 ${resolvedUrls.distinct().size}/${resolvedUrls.size}" +
+                " · 首书 ${resolvedUrls.firstOrNull()?.take(64) ?: "空"}" +
                 " · 源版本 ${source["ruleRevision"] ?: "?"}" +
                 " · 规则「${(rules["bookList"]?.toString() ?: "").take(48)}」"
         } else null
