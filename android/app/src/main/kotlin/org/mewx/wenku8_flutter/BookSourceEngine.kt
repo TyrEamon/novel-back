@@ -402,13 +402,24 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 append("没有返回书目 · HTTP ").append(reply.status)
                 append(" · ").append(body.length).append(" 字节")
                 append(" · 行 ").append(Regex("<tr", RegexOption.IGNORE_CASE).findAll(body).count())
+                append("/格 ").append(Regex("<td", RegexOption.IGNORE_CASE).findAll(body).count())
                 append(" · ").append(table ?: "无表格")
                 if (title.isNotEmpty()) append(" · 标题「").append(title.take(40)).append("」")
+                // Which page state arrived matters more than any selector: a
+                // logged-out reader and a genuinely empty result both come back
+                // as 200 with a table, and only the wording tells them apart.
+                val marks = buildList {
+                    if (body.contains("退出登录")) add("已登录")
+                    if (body.contains("未登录") || body.contains("请先登录")) add("要登录")
+                    if (body.contains("没有找到") || body.contains("无相关")) add("无结果提示")
+                    if (body.contains("错误原因")) add("有错误原因")
+                }
+                if (marks.isNotEmpty()) append(" · ").append(marks.joinToString("/"))
                 if (!notice.isNullOrEmpty()) append(" · 站点说「").append(notice).append("」")
                 if (around.isNotEmpty()) append(" · 命中处「").append(around).append("」")
                 else if (key.isNotBlank()) append(" · 正文没有「").append(key).append("」")
                 append(" · Cookie ").append(
-                    if (cookieNames.isEmpty()) "无" else "${cookieNames.size} 项 ${cookieNames.take(6).joinToString(",")}",
+                    if (cookieNames.isEmpty()) "无" else "${cookieNames.size} 项 ${cookieNames.joinToString(",")}",
                 )
                 append(" · ").append(reply.url)
             }
