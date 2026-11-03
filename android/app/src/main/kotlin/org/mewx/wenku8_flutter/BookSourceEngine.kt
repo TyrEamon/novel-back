@@ -458,6 +458,17 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 append(" · ").append(reply.url)
             }
         } else null
+        // A page that yields one book out of twenty matched nodes is a rule bug,
+        // not a shorter page: name what the first nodes actually contain so the
+        // next report says "row 2 has no url" instead of "one book".
+        val shortListing = if (nodes.size > 1 && items.size in 1 until nodes.size) {
+            val heads = nodes.take(3).joinToString(" · ") { node ->
+                val name = runCatching { field(rules, "name", node) }.getOrDefault("")
+                val url = runCatching { field(rules, "bookUrl", node) }.getOrDefault("")
+                "「${name.take(16).ifBlank { "空" }}」→${url.take(48).ifBlank { "空" }}"
+            }
+            "书目 ${items.size}/${nodes.size} · $heads"
+        } else null
         // A search the site answered with its login form is not an empty
         // catalogue: it is a permission answer, and it has a way forward.
         if (items.isEmpty() && reply.url.contains("login.php", ignoreCase = true)) {
@@ -484,7 +495,8 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val hasMore = explicitNext != null || navigation?.nextUrl != null ||
             (navigation?.hasPager != true && items.isNotEmpty() && supportsPages)
         return mapOf("items" to items.distinctBy { it["bookUrl"] }.let { if (reverse) it.reversed() else it },
-            "pageUrl" to reply.url, "nextUrl" to nextUrl, "hasMore" to hasMore, "probe" to probe)
+            "pageUrl" to reply.url, "nextUrl" to nextUrl, "hasMore" to hasMore,
+            "probe" to (probe ?: shortListing))
     }
 
     private fun accountVerify(): Boolean {

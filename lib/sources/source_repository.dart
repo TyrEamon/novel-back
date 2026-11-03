@@ -721,7 +721,7 @@ class SourceNovelRepository extends ChangeNotifier
       ];
       final fresh = books.where((b) => listing.seen.add(b.id)).toList();
       final probe = result['probe'];
-      if (probe is String && probe.isNotEmpty && books.isEmpty) {
+      if (probe is String && probe.isNotEmpty) {
         _emptyProbes.putIfAbsent(source.key, () => probe);
       } else if (books.isNotEmpty) {
         _emptyProbes.remove(source.key);
@@ -936,6 +936,14 @@ class SourceNovelRepository extends ChangeNotifier
       }
     }
     final items = [for (final result in results) ...result.items];
+    if (items.length == 1) {
+      // One row out of a twenty-row page is a rule bug. The engine describes it;
+      // a single quiet book would only hide it until the next report.
+      for (final source in candidates) {
+        final probe = _emptyProbes[source.key];
+        if (probe != null && probe.isNotEmpty) throw SourceFailure(probe);
+      }
+    }
     // Source identities stay distinct even when title/author are identical.
     items.sort(
       (a, b) => candidates
