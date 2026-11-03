@@ -353,6 +353,11 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val reverse = listRule.startsWith('-')
         val nodes = list(listRule.removePrefix("-").removePrefix("+"), reply.body)
         check(nodes.size <= 1000) { "单页书目超过 1000 项" }
+        // Options of the template that produced this page. A bare URL read off
+        // the page has to carry them, or the follow-up request turns into plain
+        // HTTP and the site's challenge answers instead of the content.
+        val inheritedOptions = org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(template, 2)
+            .getOrNull(1)?.trim()?.takeIf { it.startsWith("{") }
         val items = nodes.mapNotNull { node ->
             this.book = mutableMapOf("origin" to source["bookSourceUrl"], "originName" to source["bookSourceName"])
             rowVariables = SourceState(); rowEntity = "book"
@@ -372,6 +377,34 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         }
         this.book = emptyMap()
         if (!inferNavigation && items.size != nodes.size) throw SourceAccountFailure("书源云书架中有书籍缺少名称或详情地址，未合并到书架")
+        // A search that matched exactly one book answers with that book's own
+        // page instead of a list (a 302). The page *is* the book, so take its
+        // address rather than asking the list rules for a link that cannot be
+        // there — that is why single hits used to come back as nothing.
+        if (items.isEmpty() && nodes.size <= 1 &&
+            Regex("/book/\\d+\\.htm", RegexOption.IGNORE_CASE).containsMatchIn(reply.url)
+        ) {
+            val name = runCatching { field(rules, "name", reply.body) }.getOrDefault("")
+            if (name.isNotBlank()) {
+                return mapOf(
+                    "items" to listOf(
+                        linkedMapOf<String, Any?>(
+                            "name" to name,
+                            "bookUrl" to reply.url + (inheritedOptions ?: ""),
+                            "author" to SourceDocumentMetadata.authorName(field(rules, "author", reply.body)),
+                            "kind" to values(rules["kind"], reply.body).joinToString(","),
+                            "intro" to field(rules, "intro", reply.body),
+                            "coverUrl" to absolute(field(rules, "coverUrl", reply.body), reply.url),
+                            "lastChapter" to "",
+                        ),
+                    ),
+                    "pageUrl" to reply.url,
+                    "nextUrl" to null,
+                    "hasMore" to false,
+                    "probe" to null,
+                )
+            }
+        }
         // Empty rows are either a genuinely empty catalogue or the site's
         // answer to a request it did not like. Name what actually came back —
         // the page's own title, its first table, how many rows it has and the
@@ -486,8 +519,6 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         // verbatim would drop the webView/charset options the source declares
         // and the next page would be fetched as plain HTTP. Carry the options
         // of the page that produced the link, unless the link names its own.
-        val inheritedOptions = org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(template, 2)
-            .getOrNull(1)?.trim()?.takeIf { it.startsWith("{") }
         val nextUrl = (explicitNext ?: navigationNext)?.let { next ->
             val own = org.mewx.wenku8_flutter.legado.AnalyzeUrl.paramPattern.split(next, 2).size > 1
             if (inheritedOptions == null || own) next else "$next,$inheritedOptions"

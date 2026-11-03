@@ -985,9 +985,9 @@ class SourceNovelRepository extends ChangeNotifier
       }
     }
     final items = [for (final result in results) ...result.items];
-    if (items.length == 1) {
-      // One row out of a twenty-row page is a rule bug. The engine describes it;
-      // a single quiet book would only hide it until the next report.
+    if (items.length < 5) {
+      // A handful of rows out of a twenty-row page is a rule bug. The engine
+      // describes it; a quiet short list would only hide it until the next report.
       for (final source in candidates) {
         final probe = searchProbes[source.key];
         if (probe != null && probe.isNotEmpty) throw SourceFailure(probe);
