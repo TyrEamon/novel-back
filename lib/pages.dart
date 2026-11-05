@@ -249,7 +249,7 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
     _tab = _navigation.destination(widget.state.startPage.index);
     _visitedTabs.add(_tab);
     _navigation.addListener(_navigationChanged);
-    _searchText.addListener(_searchEdited);
+    // The field reports a submit, not a keystroke: see _submitSearch.
     _searchFeed.addListener(_searchSucceeded);
     widget.state.blockedTagsChanges.addListener(_blockedTagsChanged);
     _blockedTagsChanged();
@@ -469,13 +469,15 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
     }
   }
 
-  void _searchEdited() {
-    if (!_searchOpen) return;
-    if (!_searchText.value.composing.isCollapsed) {
-      _activeSearch.cancelScheduledSearch();
-      return;
-    }
-    _activeSearch.scheduleSearch(_searchText.text);
+  /// Typing edits the field and nothing else. A search is a WebView request
+  /// that the site spaces out on purpose, and a pinyin composition fires a
+  /// change per syllable, so the request waits for an explicit submit --
+  /// the keyboard's search key, the leading icon, or a recent query.
+  void _submitSearch(String value) {
+    final term = value.trim();
+    _dismissSearchKeyboard();
+    if (term.isEmpty) return;
+    _activeSearch.searchFor(term);
   }
 
   void _searchSucceeded() {
@@ -906,9 +908,17 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
 
   Widget _searchField(BuildContext context) => Row(
     children: [
-      const SizedBox(
+      SizedBox(
         width: 44,
-        child: ArchiveIcon(CupertinoIcons.search, size: 19),
+        child: Semantics(
+          button: true,
+          label: '搜索',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _submitSearch(_searchText.text),
+            child: const ArchiveIcon(CupertinoIcons.search, size: 19),
+          ),
+        ),
       ),
       Expanded(
         child: AppSearchField(
@@ -918,10 +928,7 @@ class HomeShellState extends State<HomeShell> with TickerProviderStateMixin {
           hint: _activeSearch.searchField.hint,
           controller: _searchText,
           focusNode: _searchFocus,
-          onSubmitted: (query) {
-            _activeSearch.searchFor(query);
-            _dismissSearchKeyboard();
-          },
+          onSubmitted: _submitSearch,
         ),
       ),
       SizedBox(
