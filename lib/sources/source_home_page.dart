@@ -89,6 +89,13 @@ class _SourceHomePageState extends State<SourceHomePage> {
     unawaited(_readAccount());
   }
 
+  /// The listing owns the loading / error / end-of-list story, and the footer
+  /// only reports what it reads at build time, so the page has to rebuild when
+  /// the feed moves or a tap on 加载更多 would change nothing on screen.
+  void _onFeedChanged() {
+    if (mounted) setState(() {});
+  }
+
   /// A block the source declares login-only is dropped until a session exists,
   /// so an anonymous profile never fires the requests that are guaranteed to
   /// bounce to the login page.
@@ -158,6 +165,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
         loaded.url == target.url) {
       return;
     }
+    _feed?.removeListener(_onFeedChanged);
     _feed?.dispose();
     _feed = null;
     _loaded = target;
@@ -180,6 +188,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
         );
       },
     );
+    feed.addListener(_onFeedChanged);
     setState(() => _feed = feed);
     unawaited(feed.loadInitial());
   }
@@ -206,6 +215,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
     widget.sources.removeListener(_changed);
     widget.sources.accountChanges.removeListener(_changed);
     widget.sources.cancelHome(_owner);
+    _feed?.removeListener(_onFeedChanged);
     _feed?.dispose();
     super.dispose();
   }
