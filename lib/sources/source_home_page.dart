@@ -96,6 +96,11 @@ class _SourceHomePageState extends State<SourceHomePage> {
     if (mounted) setState(() {});
   }
 
+  /// Auto paging waits for a real gesture. A short page that fits the screen
+  /// leaves almost no scroll extent, and a notification-driven load on that
+  /// state pulls page after page while the reader is still looking at the top.
+  bool _armed = false;
+
   /// A block the source declares login-only is dropped until a session exists,
   /// so an anonymous profile never fires the requests that are guaranteed to
   /// bounce to the login page.
@@ -189,12 +194,25 @@ class _SourceHomePageState extends State<SourceHomePage> {
       },
     );
     feed.addListener(_onFeedChanged);
+    _armed = false;
     setState(() => _feed = feed);
     unawaited(feed.loadInitial());
   }
 
   void _select(SourceHomeSection section) {
-    if (section.id == _loaded?.id) return;
+    final loaded = _loaded;
+    final same = loaded != null &&
+        loaded.id == section.id &&
+        loaded.url == section.url;
+    // Tapping the block that is already on screen is a retry when that block
+    // came back empty or failed, not a no-op the reader has to guess about.
+    if (same) {
+      final feed = _feed;
+      if (feed != null && (feed.error != null || feed.items.isEmpty)) {
+        unawaited(feed.retry());
+      }
+      return;
+    }
     setState(() => _picked = section);
     _syncFeed();
   }
@@ -350,6 +368,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        _armed = false;
         await _readAccount();
         await _feed?.refresh();
       },
@@ -357,7 +376,12 @@ class _SourceHomePageState extends State<SourceHomePage> {
         onNotification: (notification) {
           final current = _feed;
           if (current == null) return false;
+          if (notification is ScrollStartNotification &&
+              notification.dragDetails != null) {
+            _armed = true;
+          }
           if (notification.depth == 0 &&
+              _armed &&
               !current.loading &&
               current.hasMore &&
               current.error == null &&
@@ -388,13 +412,19 @@ class _SourceHomePageState extends State<SourceHomePage> {
                   24,
                   0,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    widget.heading,
-                    const SizedBox(height: 14),
-                    _chips(context, sections, target),
-                  ],
+                child: widget.heading,
+              ),
+            ),
+            // The block picker stays reachable while the list is scrolled: with
+            // one listing on screen the page can be long, and a picker that
+            // scrolls away is a picker that does not exist.
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _PinnedChips(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 0, 6),
+                  child: _chips(context, sections, target),
                 ),
               ),
             ),
@@ -485,4 +515,29 @@ class _SourceHomePageState extends State<SourceHomePage> {
       ),
     );
   }
+}
+
+/// One row of block chips that stays where it is while the listing scrolls.
+/// The chips scroll horizontally on their own, so the height never changes.
+class _PinnedChips extends SliverPersistentHeaderDelegate {
+  _PinnedChips({required this.child, required this.color});
+  final Widget child;
+  final Color color;
+  static const _height = 54.0;
+  @override
+  double get minExtent => _height;
+  @override
+  double get maxExtent => _height;
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) => ColoredBox(
+    color: color,
+    child: Align(alignment: Alignment.centerLeft, child: child),
+  );
+  @override
+  bool shouldRebuild(covariant _PinnedChips old) =>
+      old.child != child || old.color != color;
 }
