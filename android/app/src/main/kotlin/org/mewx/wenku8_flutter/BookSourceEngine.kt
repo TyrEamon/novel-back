@@ -349,10 +349,20 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                 "probe" to probe,
             )
         }
-        val reply = request(template, checkLogin = true)
+        var reply = request(template, checkLogin = true)
         val listRule = rules["bookList"]?.toString().orEmpty()
         val reverse = listRule.startsWith('-')
-        val nodes = list(listRule.removePrefix("-").removePrefix("+"), reply.body)
+        val listSelector = listRule.removePrefix("-").removePrefix("+")
+        var nodes = list(listSelector, reply.body)
+        // A catalogue page that parses to nothing is either the site's soft
+        // "this address does not exist" answer or a challenge page that replied
+        // 200; both look identical to an empty page and both end a listing that
+        // is not over. One repeat separates a transient answer from a real one,
+        // and the probe below names what came back when it repeats.
+        if (nodes.isEmpty() && !noResultsPage(reply.body)) {
+            reply = request(template, checkLogin = true, retryAllowed = false)
+            nodes = list(listSelector, reply.body)
+        }
         check(nodes.size <= 1000) { "单页书目超过 1000 项" }
         // Options of the template that produced this page. A bare URL read off
         // the page has to carry them, or the follow-up request turns into plain
@@ -912,8 +922,11 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         if (checkStatus) check(response.status < 400) { if (response.status in setOf(401, 403)) "书源要求登录或网页验证（HTTP ${response.status}）" else "书源返回 HTTP ${response.status}" }
         run.check(); return response
     }
-    private fun scriptResponse(template: String, headers: Map<String, String> = emptyMap(), timeout: Long? = null): SourceResponse {
-        val plan = prepareRequest(template, headers, timeout)
+    /** Pages the site means to be empty: the search says it found nothing. */
+    private fun noResultsPage(body: String): Boolean =
+        listOf("没有找到", "无相关", "沒有找到", "沒有任何", "没有符合").any { body.contains(it) }
+
+    private fun scriptResponse(template: String, headers: Map<String, String> = emptyMap(), timeout: Long? = null): SourceResponse {        val plan = prepareRequest(template, headers, timeout)
         val reply = try { finishResponse(plan, fetchPlan(plan)) }
         catch (failure: Exception) { run.check(); SourceReply(plan.spec.requestUrl(), scriptHttpError(failure)) }
         return SourceResponse(reply)

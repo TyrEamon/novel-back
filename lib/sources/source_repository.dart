@@ -765,6 +765,16 @@ class SourceNovelRepository extends ChangeNotifier
       final next = result['nextUrl'];
       listing.nextUrl = next is String && next.isNotEmpty ? next : null;
       if (fresh.isEmpty) {
+        // The engine said this listing continues and this page came back
+        // empty, so the honest reading is not "the list ends here": it is a
+        // page that owes an explanation. Ending quietly is how a ranking with
+        // hundreds of pages turned into two.
+        if (page > 1) {
+          throw SourceFailure(
+            _emptyProbes[probeKey] ??
+                '第 $page 页没有返回书目，列表可能已到末尾，也可能这一页被站点拦下了',
+          );
+        }
         listing.ended = true;
       } else {
         listing.remotePage++;
