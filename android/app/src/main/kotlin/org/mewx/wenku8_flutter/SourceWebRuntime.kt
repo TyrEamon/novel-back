@@ -15,6 +15,20 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+/**
+ * A finished document is not always a readable one: the interstitial that sits
+ * in front of a challenge-protected site also reports `complete`, and its title
+ * is the only reliable sign that it is still a challenge. Anything else that has
+ * finished loading with real markup is worth reading right away instead of
+ * waiting out the whole declared delay on every single request.
+ */
+private const val WEB_READY_POLL_MS = 120L
+private const val WEB_READY_SCRIPT =
+    "(function(){var b=document.body;var t=document.title||'';" +
+        "var bad=/just a moment|checking your browser|attention required|" +
+        "verifying you are human|verify you are human|请稍候|正在验证|安全验证/i.test(t);" +
+        "return (document.readyState==='complete'&&!bad&&b&&b.innerHTML&&b.innerHTML.length>512)?'1':'0';})()"
+
 /** A renderer process keeps imported web sources away from cloud-import browser sessions. */
 internal class SourceWebRuntime(private val context: Context) {
     private val main = Handler(Looper.getMainLooper())
@@ -136,6 +150,27 @@ internal class SourceWebRenderer(
     private var web: WebView? = null
     private var finished = false
     private var retries = 0
+
+    /** When the blind capture is due; polling stops there and lets it run. */
+    private var captureDeadline = 0L
+
+    /** Reads the page as soon as it is a page, not as soon as the delay expires. */
+    private val probe = object : Runnable {
+        override fun run() {
+            val view = web ?: return
+            if (finished || System.currentTimeMillis() >= captureDeadline) return
+            view.evaluateJavascript(WEB_READY_SCRIPT) { raw ->
+                if (finished) return@evaluateJavascript
+                val ready = runCatching { Gson().fromJson(raw, String::class.java) }.getOrNull() == "1"
+                if (ready) {
+                    main.removeCallbacks(evaluate)
+                    evaluate.run()
+                } else if (!finished) {
+                    main.postDelayed(this, WEB_READY_POLL_MS)
+                }
+            }
+        }
+    }
     private var cookies: CookieManager? = null
     private val urls = linkedSetOf<String>()
     private val capture = SourceWebCapture(request)
@@ -214,8 +249,17 @@ internal class SourceWebRenderer(
                 urls.add(url); main.removeCallbacks(evaluate)
                 if (!finished && attach != null && !request.script.isNullOrBlank()) main.postDelayed(trigger, 100 + request.delay)
                 if (!finished && attach == null) {
-                    if (!capture.active) main.postDelayed(evaluate, 100 + if (request.script.isNullOrBlank() && request.delay == 0L) 900 else request.delay)
-                    else request.script?.takeIf { it.isNotBlank() }?.let {
+                    if (!capture.active) {
+                        val blind = 100 + if (request.script.isNullOrBlank() && request.delay == 0L) 900 else request.delay
+                        main.postDelayed(evaluate, blind)
+                        // Challenge pages finish loading too, so the delay stays as
+                        // the deadline; this only collects the page earlier when
+                        // nothing is standing in front of it.
+                        if (request.script.isNullOrBlank() && request.delay >= WEB_READY_POLL_MS * 2) {
+                            captureDeadline = System.currentTimeMillis() + blind
+                            main.postDelayed(probe, WEB_READY_POLL_MS)
+                        }
+                    } else request.script?.takeIf { it.isNotBlank() }?.let {
                         // Sniffers run the trigger script, but do not finish on
                         // its return value or on the page's HTML.
                         main.postDelayed(trigger, 100 + request.delay)
@@ -269,6 +313,7 @@ internal class SourceWebRenderer(
     private fun finish(body: String = "", url: String = request.url, sniffed: Boolean = false, error: String? = null) {
         if (finished) return; finished = true
         main.removeCallbacks(timeout); main.removeCallbacks(evaluate); main.removeCallbacks(trigger)
+        main.removeCallbacks(probe)
         val result = if (error != null) null else mapOf("url" to url, "body" to body, "sniffed" to sniffed,
             "cookies" to urls.mapNotNull { raw -> runCatching { SourceNetwork.url(raw).toString() }.getOrNull() }
                 .distinct().associateWith { cookies?.getCookie(it).orEmpty() })
