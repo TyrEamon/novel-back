@@ -22,12 +22,12 @@
       "profile": {
         "url": "https://www.wenku8.net/userdetail.php,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
         "loggedIn": "@js:result.includes('退出登录') || result.includes('用户名')",
-        "id": "td:containsOwn(用户ID)+td@text",
-        "name": "td:containsOwn(用户名)+td@text",
-        "nickname": "td:containsOwn(昵称)+td@text",
-        "rank": "td:containsOwn(头衔)+td@text",
-        "score": "td:containsOwn(拥有积分)+td@text",
-        "experience": "td:containsOwn(威望值)+td@text",
+        "id": "td:containsOwn(用户ID：)+td@text",
+        "name": "td:containsOwn(用户名：)+td@text",
+        "nickname": "td:containsOwn(昵称：)+td@text",
+        "rank": "td:containsOwn(头衔：)+td@text",
+        "score": "td:containsOwn(现有积分：)+td@text",
+        "experience": "td:containsOwn(经验值：)+td@text",
         "avatar": "img[src*=avatar]@src || img[src*=noavatar]@src"
       },
       "shelf": {

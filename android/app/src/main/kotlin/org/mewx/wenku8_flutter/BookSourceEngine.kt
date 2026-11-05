@@ -630,7 +630,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
     }
 
     /** Site profile pages append a hint in parentheses to a field left unset
-     * ("tyreamon(不设置用户中心昵称)"), which is not part of the value. */
+     * ("tyreamon(留空则用户名做昵称)"), which is not part of the value. */
     private fun profileText(value: String): String =
         value.trim().replace(Regex("\\s*[（(][^（()）]{0,24}[)）]\\s*$"), "").trim()
 
