@@ -9,11 +9,13 @@ import '../archive_wave.dart';
 import '../book_collection_grid.dart';
 import '../book_collection_layout.dart';
 import '../catalog.dart';
+import '../dock_layout.dart';
 import '../library_state.dart';
 import '../loading_ui.dart';
 import '../novel_feed_controller.dart';
 import '../offline_repository.dart';
 import '../pages.dart' show FeedFooter, NovelRow, openDetail;
+import '../scroll_edge_blur.dart';
 import 'book_source.dart';
 import 'source_pages.dart' show openSourceManager;
 import 'source_repository.dart';
@@ -448,7 +450,6 @@ class _SourceHomePageState extends State<SourceHomePage> {
             SliverPersistentHeader(
               pinned: true,
               delegate: _PinnedChips(
-                color: Theme.of(context).scaffoldBackgroundColor,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 12, 0, 6),
                   child: _chips(context, sections, target),
@@ -547,9 +548,8 @@ class _SourceHomePageState extends State<SourceHomePage> {
 /// One row of block chips that stays where it is while the listing scrolls.
 /// The chips scroll horizontally on their own, so the height never changes.
 class _PinnedChips extends SliverPersistentHeaderDelegate {
-  _PinnedChips({required this.child, required this.color});
+  _PinnedChips({required this.child});
   final Widget child;
-  final Color color;
   static const _height = 54.0;
   @override
   double get minExtent => _height;
@@ -560,11 +560,32 @@ class _PinnedChips extends SliverPersistentHeaderDelegate {
     BuildContext context,
     double shrinkOffset,
     bool overlapsContent,
-  ) => ColoredBox(
-    color: color,
-    child: Align(alignment: Alignment.centerLeft, child: child),
-  );
+  ) {
+    // The page sits on a gradient with a texture painted under its top edge, so
+    // an opaque fill reads as a grey band with two hard edges. The chrome
+    // language here is a blur of what scrolls beneath plus a translucent tint;
+    // the strip borrows exactly that and never pretends to be a flat colour.
+    final appearance = GlassAppearance.of(context);
+    final highContrast = MediaQuery.highContrastOf(context);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (!highContrast)
+          ProgressiveBlur(
+            maxSigma: appearance.blur,
+            shadeOpacity: DockLayout.topEdgeShadeOpacity,
+          ),
+        ColoredBox(
+          color: GlassAppearance.tintOf(
+            context,
+            opacity: highContrast ? 1 : appearance.opacity,
+          ),
+        ),
+        Align(alignment: Alignment.centerLeft, child: child),
+      ],
+    );
+  }
+
   @override
-  bool shouldRebuild(covariant _PinnedChips old) =>
-      old.child != child || old.color != color;
+  bool shouldRebuild(covariant _PinnedChips old) => old.child != child;
 }

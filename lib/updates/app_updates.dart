@@ -682,7 +682,7 @@ class AppUpdates extends ChangeNotifier {
   UpdateDownload? _download;
   Future<InstalledApp>? _loadingInfo;
   bool get busy => checking || downloading || installing;
-  bool get autoCheck => preferences.getBool('checkAppUpdates') ?? true;
+  bool get autoCheck => preferences.getBool('checkAppUpdates') ?? false;
   String? get installedReleaseKey =>
       installed == null ? null : '${installed!.version}+${installed!.build}';
   bool get shouldShowReleaseNotes =>
