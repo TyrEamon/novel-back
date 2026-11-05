@@ -9,13 +9,11 @@ import '../archive_wave.dart';
 import '../book_collection_grid.dart';
 import '../book_collection_layout.dart';
 import '../catalog.dart';
-import '../dock_layout.dart';
 import '../library_state.dart';
 import '../loading_ui.dart';
 import '../novel_feed_controller.dart';
 import '../offline_repository.dart';
 import '../pages.dart' show FeedFooter, NovelRow, openDetail;
-import '../scroll_edge_blur.dart';
 import 'book_source.dart';
 import 'source_pages.dart' show openSourceManager;
 import 'source_repository.dart';
@@ -323,10 +321,17 @@ class _SourceHomePageState extends State<SourceHomePage> {
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: selected ? scheme.primaryContainer : null,
+                // No plate behind the row any more, so every chip carries its
+                // own face: without one a resting chip is bare text drifting
+                // over whatever is scrolling under it.
+                color: selected
+                    ? scheme.primaryContainer
+                    : scheme.surfaceContainerHighest.withValues(alpha: .72),
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: selected ? scheme.primaryContainer : scheme.outlineVariant,
+                  color: selected
+                      ? scheme.primaryContainer
+                      : scheme.outlineVariant,
                 ),
               ),
               child: AppText(
@@ -561,29 +566,9 @@ class _PinnedChips extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    // The page sits on a gradient with a texture painted under its top edge, so
-    // an opaque fill reads as a grey band with two hard edges. The chrome
-    // language here is a blur of what scrolls beneath plus a translucent tint;
-    // the strip borrows exactly that and never pretends to be a flat colour.
-    final appearance = GlassAppearance.of(context);
-    final highContrast = MediaQuery.highContrastOf(context);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (!highContrast)
-          ProgressiveBlur(
-            maxSigma: appearance.blur,
-            shadeOpacity: DockLayout.topEdgeShadeOpacity,
-          ),
-        ColoredBox(
-          color: GlassAppearance.tintOf(
-            context,
-            opacity: highContrast ? 1 : appearance.opacity,
-          ),
-        ),
-        Align(alignment: Alignment.centerLeft, child: child),
-      ],
-    );
+    // Chips only: no plate, no tint, no blur. Anything painted behind them
+    // reads as a band lying across the page's own gradient.
+    return Align(alignment: Alignment.centerLeft, child: child);
   }
 
   @override
