@@ -109,6 +109,7 @@ class WenkuShelfSync extends ChangeNotifier with WidgetsBindingObserver {
     if (_disposed ||
         syncing ||
         !account.authenticated ||
+        !account.cloudCapable ||
         account.profile == null ||
         !_foreground) {
       return;

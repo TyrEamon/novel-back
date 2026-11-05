@@ -222,10 +222,11 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         require(page in 1..100000); this.key = key; this.page = page
         this.book = hydrateEntity(book, true); this.chapter = hydrateEntity(chapter, false)
         run.check()
-        if (operation in setOf("accountVerify", "accountShelf", "accountCheckIn") && source["enabled"] == false)
+        if (operation in setOf("accountVerify", "accountShelf", "accountCheckIn", "accountProfile") && source["enabled"] == false)
             throw SourceAccountFailure("书源已停用，启用后可执行账号操作")
         when (operation) {
             "accountVerify" -> return accountVerify()
+            "accountProfile" -> return accountProfile()
             "accountCheckIn" -> return accountCheckIn()
             "accountShelf" -> {
                 val rules = SourceAccountRules(source["ruleAccount"]).shelf()
@@ -599,6 +600,39 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (failure: Exception) { SourceAccountState.failed(run.state); throw failure }
     }
+
+    /** One request answers both "who is signed in" and the card's metadata, so
+     * the profile page replaces a bare login check instead of doubling it. An
+     * empty read with no declared login marker is a failure, not a blank card:
+     * the source promised a name rule and the page did not honour it. */
+    private fun accountProfile(): Map<String, Any?> {
+        val rules = SourceAccountRules(source["ruleAccount"]).profile()
+            ?: throw SourceAccountFailure("书源没有提供账号资料规则")
+        val reply = request(rules["url"].toString(), checkStatus = false)
+        if (reply.status == 401) { SourceAccountState.verified(run.state, false); return emptyMap() }
+        if (reply.status !in 200..299) throw SourceAccountFailure("书源账号资料请求未完成，请稍后重试")
+        val loggedIn = rules["loggedIn"]?.toString()?.takeIf { it.isNotBlank() }
+            ?.let { SourceAccountRules.boolean(field(rules, "loggedIn", reply.body)) }
+        val values = linkedMapOf<String, Any?>()
+        for (name in listOf("id", "name", "nickname", "rank", "score", "experience")) {
+            val text = profileText(field(rules, name, reply.body))
+            if (text.isNotEmpty()) values[name] = text
+        }
+        if ((values["name"] as? String).isNullOrBlank()) {
+            if (loggedIn == true) throw SourceAccountFailure("书源资料页没有读到账号名，请检查规则")
+            SourceAccountState.verified(run.state, false)
+            return emptyMap()
+        }
+        val avatar = absolute(field(rules, "avatar", reply.body), reply.url)
+        if (avatar.isNotBlank()) values["avatar"] = avatar
+        run.check(); SourceAccountState.verified(run.state, true)
+        return values
+    }
+
+    /** Site profile pages append a hint in parentheses to a field left unset
+     * ("tyreamon(不设置用户中心昵称)"), which is not part of the value. */
+    private fun profileText(value: String): String =
+        value.trim().replace(Regex("\\s*[（(][^（()）]{0,24}[)）]\\s*$"), "").trim()
 
     private fun accountCheckIn(): Map<String, Any?> {
         val rules = SourceAccountRules(source["ruleAccount"]).checkIn()

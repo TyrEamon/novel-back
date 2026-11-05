@@ -189,14 +189,28 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _webLogin = false;
+  bool _canCheckIn = false;
   @override
   void initState() {
     super.initState();
-    _webLogin = sourceRepositoryOf(widget.repository)
-            ?.store
-            .sources
-            .any((source) => source.key == 'https://www.wenku8.net') ??
-        false;
+    final sources = sourceRepositoryOf(widget.repository);
+    final bundled = sources?.store.sources
+        .where((source) => source.key == 'https://www.wenku8.net')
+        .firstOrNull;
+    _webLogin = bundled != null;
+    if (sources != null && bundled != null) {
+      unawaited(() async {
+        try {
+          final status = await sources.accountStatus(bundled);
+          if (mounted && status.canCheckIn != _canCheckIn) {
+            setState(() => _canCheckIn = status.canCheckIn);
+          }
+        } catch (_) {
+          // A source that cannot answer yet keeps the button hidden; the card's
+          // own status line explains why.
+        }
+      }());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(widget.account.initialize());
     });
@@ -235,6 +249,9 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
         SourceLoginPage(source: bundled.first, repository: sources),
         reduceMotion: widget.state.reduceMotion,
       );
+      // The session that just opened the site's own pages is the one the
+      // account card reads, so the card updates without a second tap.
+      await widget.account.refreshProfile();
       return;
     }
     final account = widget.account;
@@ -303,7 +320,7 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                 const SizedBox(height: 12),
                 AppText(
                   account.authenticated
-                      ? '登录后自动同步收藏，本机阅读进度与原书保留。'
+                      ? '资料与书架都跟着这个账号走，本机阅读进度与原书保留。'
                       : '使用原版文库账号。未登录时仍可搜索、收藏到本机和离线阅读。',
                 ),
                 const SizedBox(height: 24),
@@ -312,64 +329,67 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextField(
-                          key: const ValueKey('account-username'),
-                          onTap: () =>
-                              AppHaptics.play(context, HapticCue.selection),
-                          onTapAlwaysCalled: true,
-                          controller: _username,
-                          enabled: !account.busy,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.username],
-                          maxLength: 254,
-                          decoration: InputDecoration(
-                            labelText: appText(context, '用户名 / 邮箱'),
-                            hintText: appText(context, '请输入用户名或邮箱'),
-                            counterText: '',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          key: const ValueKey('account-password'),
-                          onTap: () =>
-                              AppHaptics.play(context, HapticCue.selection),
-                          onTapAlwaysCalled: true,
-                          controller: _password,
-                          enabled: !account.busy,
-                          obscureText: _obscure,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          keyboardType: TextInputType.visiblePassword,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.password],
-                          smartDashesType: SmartDashesType.disabled,
-                          smartQuotesType: SmartQuotesType.disabled,
-                          maxLength: 30,
-                          onSubmitted: (_) => _login(),
-                          decoration: InputDecoration(
-                            labelText: appText(context, '密码'),
-                            hintText: appText(context, '请输入密码'),
-                            counterText: '',
-                            suffixIcon: IconButton(
-                              tooltip: _obscure ? '显示密码' : '隐藏密码',
-                              icon: ArchiveIcon(
-                                _obscure
-                                    ? CupertinoIcons.eye
-                                    : CupertinoIcons.eye_slash,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
+                        // The site accepts its password only on its own page, so
+                        // a form here would collect a secret nothing can use.
+                        if (!_webLogin) ...[
+                          TextField(
+                            key: const ValueKey('account-username'),
+                            onTap: () =>
+                                AppHaptics.play(context, HapticCue.selection),
+                            onTapAlwaysCalled: true,
+                            controller: _username,
+                            enabled: !account.busy,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.username],
+                            maxLength: 254,
+                            decoration: InputDecoration(
+                              labelText: appText(context, '用户名 / 邮箱'),
+                              hintText: appText(context, '请输入用户名或邮箱'),
+                              counterText: '',
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (_webLogin)
+                          const SizedBox(height: 12),
+                          TextField(
+                            key: const ValueKey('account-password'),
+                            onTap: () =>
+                                AppHaptics.play(context, HapticCue.selection),
+                            onTapAlwaysCalled: true,
+                            controller: _password,
+                            enabled: !account.busy,
+                            obscureText: _obscure,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            keyboardType: TextInputType.visiblePassword,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.password],
+                            smartDashesType: SmartDashesType.disabled,
+                            smartQuotesType: SmartQuotesType.disabled,
+                            maxLength: 30,
+                            onSubmitted: (_) => _login(),
+                            decoration: InputDecoration(
+                              labelText: appText(context, '密码'),
+                              hintText: appText(context, '请输入密码'),
+                              counterText: '',
+                              suffixIcon: IconButton(
+                                tooltip: _obscure ? '显示密码' : '隐藏密码',
+                                icon: ArchiveIcon(
+                                  _obscure
+                                      ? CupertinoIcons.eye
+                                      : CupertinoIcons.eye_slash,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ] else
                           const Padding(
-                            padding: EdgeInsets.only(bottom: 10),
+                            padding: EdgeInsets.only(bottom: 16),
                             child: AppText(
-                              '轻小说文库的账号密码由官网自己的登录页接收，点下面按钮会打开官方登录页；登录完成返回后，书架与书评会自动带上登录态。',
+                              '轻小说文库的账号密码只由官网自己的登录页接收，点下面按钮会打开官方登录页；登录完成返回后，书架、书评与这里的资料都会带上登录态。',
                               style: TextStyle(fontSize: 13, height: 1.5),
                             ),
                           ),
@@ -414,15 +434,19 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           Wrap(
                             spacing: 12,
                             children: [
-                              GlassTextButton(
-                                key: const ValueKey('account-sign'),
-                                onPressed: account.busy || account.signedToday
-                                    ? null
-                                    : () => _run(account.signIn, '今日签到已完成'),
-                                child: AppText(
-                                  account.signedToday ? '今日已签到' : '每日签到',
+                              if (_canCheckIn)
+                                GlassTextButton(
+                                  key: const ValueKey('account-sign'),
+                                  onPressed: account.busy || account.signedToday
+                                      ? null
+                                      : () => _run(
+                                          account.signIn,
+                                          '今日签到已完成',
+                                        ),
+                                  child: AppText(
+                                    account.signedToday ? '今日已签到' : '每日签到',
+                                  ),
                                 ),
-                              ),
                               GlassTextButton(
                                 onPressed: account.busy
                                     ? null
@@ -436,27 +460,29 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  LoadedContentItem(
-                    index: 2,
-                    child: FeatureEntry(
-                      key: const ValueKey('account-cloud'),
-                      title: '云书架',
-                      subtitle: '收藏自动同步，查看云端书目',
-                      icon: CupertinoIcons.cloud,
-                      onTap: account.busy
-                          ? null
-                          : () => pushNovelPage<void>(
-                              context,
-                              CloudBookshelfPage(
-                                account: account,
-                                state: widget.state,
-                                repository: widget.repository,
+                  if (account.cloudCapable) ...[
+                    const SizedBox(height: 20),
+                    LoadedContentItem(
+                      index: 2,
+                      child: FeatureEntry(
+                        key: const ValueKey('account-cloud'),
+                        title: '云书架',
+                        subtitle: '收藏自动同步，查看云端书目',
+                        icon: CupertinoIcons.cloud,
+                        onTap: account.busy
+                            ? null
+                            : () => pushNovelPage<void>(
+                                context,
+                                CloudBookshelfPage(
+                                  account: account,
+                                  state: widget.state,
+                                  repository: widget.repository,
+                                ),
+                                reduceMotion: widget.state.reduceMotion,
                               ),
-                              reduceMotion: widget.state.reduceMotion,
-                            ),
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 24),
                   GlassTextButton(
                     key: const ValueKey('account-logout'),

@@ -107,6 +107,26 @@ class SourceNovelRepository extends ChangeNotifier
     }
   }
 
+  /// The account card's metadata, read from the source's own profile page. A
+  /// null answer is the source reporting "not signed in", not an error: the
+  /// card then shows the login invitation instead of a failure.
+  Future<SourceAccountProfile?> accountProfile(
+    BookSource source, {
+    String? requestId,
+  }) async {
+    try {
+      final result = await platform.run(
+        source,
+        'accountProfile',
+        requestId: requestId,
+      );
+      if (result is! Map || result.isEmpty) return null;
+      return SourceAccountProfile.fromMap(result);
+    } finally {
+      refreshAccount(source.key);
+    }
+  }
+
   Future<void> loginFinished(BookSource source, {String? requestId}) async {
     sessionChanged();
     if (source.enabled && sourceCanVerifyAccount(source)) {

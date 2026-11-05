@@ -72,3 +72,48 @@ bool sourceCanVerifyAccount(BookSource source) {
       verify['loggedIn'] is String &&
       (verify['loggedIn'] as String).isNotEmpty;
 }
+
+bool sourceCanReadProfile(BookSource source) {
+  final rules = source.data['ruleAccount'];
+  if (rules is! Map) return false;
+  final profile = rules['profile'];
+  if (profile is! Map) return false;
+  return profile['url'] is String && profile['name'] is String;
+}
+
+/// What the source's own profile rules read off the signed-in account page.
+/// Presenting these values is the whole point of the account card, so they stay
+/// plain strings/ints rather than raw rule output.
+class SourceAccountProfile {
+  const SourceAccountProfile({
+    required this.id,
+    required this.username,
+    this.nickname = '',
+    this.rank = '',
+    this.score = 0,
+    this.experience = 0,
+    this.avatarUrl = '',
+  });
+  factory SourceAccountProfile.fromMap(Map<dynamic, dynamic> value) {
+    String text(String key) => '${value[key] ?? ''}'.trim();
+    int number(String key) {
+      final raw = value[key];
+      if (raw is num) return raw.toInt();
+      final digits = RegExp(r'\d+').firstMatch('${raw ?? ''}')?.group(0);
+      return int.tryParse(digits ?? '') ?? 0;
+    }
+
+    return SourceAccountProfile(
+      id: number('id'),
+      username: text('name'),
+      nickname: text('nickname'),
+      rank: text('rank'),
+      score: number('score'),
+      experience: number('experience'),
+      avatarUrl: text('avatar'),
+    );
+  }
+  final int id, score, experience;
+  final String username, nickname, rank, avatarUrl;
+  String get displayName => nickname.isEmpty ? username : nickname;
+}

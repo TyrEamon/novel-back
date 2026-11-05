@@ -17,7 +17,9 @@ internal class SourceAccountRules(raw: Any?) {
     fun verify() = section("verify", listOf("url", "loggedIn"))
     fun shelf() = section("shelf", listOf("url", "bookList", "name", "bookUrl"))
     fun checkIn() = section("checkIn", listOf("url", "success"))
-    fun capabilities() = mapOf("verify" to (verify() != null), "shelf" to (shelf() != null), "checkIn" to (checkIn() != null))
+    fun profile() = section("profile", listOf("url", "name"))
+    fun capabilities() = mapOf("verify" to (verify() != null), "shelf" to (shelf() != null),
+        "checkIn" to (checkIn() != null), "profile" to (profile() != null))
 
     companion object {
         fun boolean(value: String): Boolean = when (value.trim().lowercase()) {
@@ -58,7 +60,7 @@ internal object SourceAccountState {
     fun view(source: Map<String, Any?>, state: SourceState, hasCookies: Boolean, now: Long = System.currentTimeMillis()): Map<String, Any?> {
         var configurationError = false
         val capabilities = try { SourceAccountRules(source["ruleAccount"]).capabilities() }
-            catch (_: SourceAccountFailure) { configurationError = true; mapOf("verify" to false, "shelf" to false, "checkIn" to false) }
+            catch (_: SourceAccountFailure) { configurationError = true; mapOf("verify" to false, "shelf" to false, "checkIn" to false, "profile" to false) }
         val submitted = state.get(OWNER, "submittedAt").toLongOrNull()
         val checked = state.get(OWNER, "checkedAt").toLongOrNull()
         val validation = state.get(OWNER, "validation")

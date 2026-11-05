@@ -79,13 +79,30 @@ class MyPage extends StatelessWidget {
                               ? SizedBox(
                                   width: 56,
                                   height: 56,
-                                  child: account?.avatar == null
+                                  child: account?.avatar != null
+                                      ? Image.memory(
+                                          account!.avatar!,
+                                          fit: BoxFit.cover,
+                                          cacheWidth:
+                                              (56 *
+                                                      MediaQuery.devicePixelRatioOf(
+                                                        context,
+                                                      ))
+                                                  .ceil(),
+                                          errorBuilder: (_, _, _) =>
+                                              const ArchiveIcon(
+                                                CupertinoIcons
+                                                    .person_crop_circle,
+                                                size: 40,
+                                              ),
+                                        )
+                                      : (account?.avatarUrl ?? '').isEmpty
                                       ? const ArchiveIcon(
                                           CupertinoIcons.person_crop_circle,
                                           size: 40,
                                         )
-                                      : Image.memory(
-                                          account!.avatar!,
+                                      : Image.network(
+                                          account!.avatarUrl!,
                                           fit: BoxFit.cover,
                                           cacheWidth:
                                               (56 *

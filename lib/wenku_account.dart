@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'library_state.dart';
 import 'online_component.dart';
+import 'sources/book_source.dart' show SourceFailure;
+import 'sources/source_account.dart';
 import 'wenku_shelf_sync.dart' show CloudShelfPlan;
 
 class WenkuProfile {
@@ -38,8 +41,18 @@ class CloudUploadResult {
 /// Domain-facing account state for presentation and local-library integration.
 /// No requests, response parsers, service status codes or session material live here.
 class WenkuAccount extends ChangeNotifier {
-  WenkuAccount();
+  /// [loadProfile] is the source-backed read of the signed-in account page; it
+  /// returns null when the site says nobody is signed in. [signOut] clears the
+  /// site session that made that read possible.
+  WenkuAccount({
+    Future<SourceAccountProfile?> Function()? loadProfile,
+    Future<void> Function()? signOut,
+  }) : _loadProfile = loadProfile,
+       _signOut = signOut;
+  final Future<SourceAccountProfile?> Function()? _loadProfile;
+  final Future<void> Function()? _signOut;
   Uint8List? avatar;
+  String? avatarUrl;
   bool authenticated = false, busy = false, signedToday = false;
   String? operation, error;
   WenkuProfile? profile;
@@ -47,23 +60,64 @@ class WenkuAccount extends ChangeNotifier {
   int? syncedAt;
   int get sessionRevision => 0;
   int get publicationRevision => 0;
+  /// The published shell has no cloud API of its own: shelf membership is
+  /// merged through the source's rules, so the classic exchange stays off.
+  bool get cloudCapable => false;
   static String describeError(Object error) =>
-      error is OnlineComponentUnavailable ||
+      error is SourceFailure
+      ? error.message
+      : error is OnlineComponentUnavailable ||
           error is OnlineAuthenticationRequired
       ? error.toString()
+      : error is PlatformException && (error.message ?? '').trim().isNotEmpty
+      ? error.message!.trim()
       : error is FormatException
       ? error.message.toString()
       : '网络或本地存储暂时异常，请重试';
-  Future<void> initialize() async {}
+  Future<void> initialize() => refreshProfile();
   Future<T> _unavailable<T>() async {
     error = OnlineComponentUnavailable.message;
     notifyListeners();
     throw const OnlineComponentUnavailable();
   }
 
+  /// Reads the account page through the source and mirrors what it says. A
+  /// signed-out answer is not a failure: the card falls back to its invitation
+  /// instead of an error line the reader cannot act on.
+  Future<void> refreshProfile() async {
+    if (busy) return;
+    final load = _loadProfile;
+    busy = true;
+    operation = 'profile';
+    error = null;
+    notifyListeners();
+    try {
+      final loaded = load == null ? null : await load();
+      avatar = null;
+      avatarUrl = loaded?.avatarUrl;
+      authenticated = loaded != null;
+      profile = loaded == null
+          ? null
+          : WenkuProfile(
+              id: loaded.id,
+              username: loaded.username,
+              nickname: loaded.nickname,
+              score: loaded.score,
+              experience: loaded.experience,
+              rank: loaded.rank,
+            );
+      if (loaded == null) cloudBooks = null;
+    } catch (failure) {
+      error = describeError(failure);
+    } finally {
+      busy = false;
+      operation = null;
+      notifyListeners();
+    }
+  }
+
   Future<void> login(String username, String password) => _unavailable();
   Future<void> connectPublications(String password) => _unavailable();
-  Future<void> refreshProfile() => _unavailable();
   Future<void> signIn() => _unavailable();
   Future<List<CloudBook>> refreshCloud() => _unavailable();
   Future<CloudShelfPlan> exchangeShelf({
@@ -84,9 +138,19 @@ class WenkuAccount extends ChangeNotifier {
       _unavailable();
   Future<int> mergeCloudToLocal(LibraryState state) => _unavailable();
   Future<void> logout() async {
+    final signOut = _signOut;
+    if (signOut != null) {
+      try {
+        await signOut();
+      } catch (_) {
+        // The visible state below is what the reader asked for; a site that
+        // refuses to confirm the logout must not keep the card signed in.
+      }
+    }
     authenticated = false;
     profile = null;
     avatar = null;
+    avatarUrl = null;
     cloudBooks = null;
     signedToday = false;
     error = null;

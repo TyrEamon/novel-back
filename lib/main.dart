@@ -28,6 +28,8 @@ import 'network_status.dart';
 import 'offline_repository.dart';
 import 'pages.dart';
 import 'performance_preferences.dart';
+import 'sources/book_source.dart';
+import 'sources/source_account.dart';
 import 'sources/source_host_bridge.dart';
 import 'sources/source_repository.dart';
 import 'sources/source_store.dart';
@@ -54,6 +56,24 @@ import 'reading_widget_settings_page.dart';
 import 'bookmark_library_page.dart';
 import 'reading_statistics_page.dart';
 import 'reading_moments_ui.dart';
+
+/// The account card lives on the source layer: the site session that reads
+/// search results is the same one that opens the profile page, and the source
+/// that declares profile rules is the one that knows where its metadata is.
+WenkuAccount sourceAccount(
+  SourceNovelRepository? remote,
+  Iterable<BookSource>? sources,
+) {
+  final source = sources?.where(sourceCanReadProfile).firstOrNull;
+  if (remote == null || source == null) return WenkuAccount();
+  return WenkuAccount(
+    loadProfile: () => remote.accountProfile(source),
+    signOut: () async {
+      await remote.platform.clearSession(source);
+      remote.sessionChanged();
+    },
+  );
+}
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -83,13 +103,12 @@ Future<void> main() async {
       WidgetsBinding.instance.platformDispatcher.platformBrightness,
   };
   SystemChrome.setSystemUIOverlayStyle(novelSystemUiStyle(brightness));
-  final WenkuAccount? account = LocalPlatform.fileActions
-      ? WenkuAccount()
-      : null;
   const legacyRemote = LegacyWenkuRepository();
   // Wenku8 stays the account/publication transport; user book sources take over
   // search, discovery and reading, so both live side by side.
   NovelRepository remote = legacyRemote;
+  SourceNovelRepository? sourceRemote;
+  SourceStore? sourceStore;
   if (LocalPlatform.fileActions) {
     final sources = await SourceStore.forApp();
     await sources.load();
@@ -105,16 +124,23 @@ Future<void> main() async {
         state.shelf.map(state.cachedNovel).whereType<Novel>(),
       );
     }
-    final sourceRemote = SourceNovelRepository(
+    final sourceNovel = SourceNovelRepository(
       store: sources,
       legacyBook: state.cachedNovel,
     );
     // Covers and illustrations come from the rule engine, not the removed
     // built-in runtime, so rebind both caches to the source repository.
-    LegacyCover.useResolver(sourceRemote.cover);
-    ReaderIllustrationCache.shared.useResolver(sourceRemote.illustration);
-    remote = sourceRemote;
+    LegacyCover.useResolver(sourceNovel.cover);
+    ReaderIllustrationCache.shared.useResolver(sourceNovel.illustration);
+    sourceStore = sources;
+    sourceRemote = sourceNovel;
+    remote = sourceNovel;
   }
+  // The account card is read through the same source that answers search and
+  // reading, so "signed in" means the site session shelf sync already uses.
+  final WenkuAccount? account = LocalPlatform.fileActions
+      ? sourceAccount(sourceRemote, sourceStore?.sources)
+      : null;
   final repository = LocalPlatform.fileActions
       ? await openApplicationLibrary(remote: remote, network: network)
       : const DemoNovelRepository();
@@ -139,6 +165,13 @@ Future<void> main() async {
           )..start(),
         )
       : null;
+  if (account != null) {
+    // The site session outlives the app, so the card reads it once on launch
+    // instead of waiting for the reader to open the account page.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(account.refreshProfile());
+    });
+  }
   final customSpeech = LocalPlatform.listening ? CustomSpeechSettings() : null;
   await customSpeech?.load();
   final listening = LocalPlatform.listening

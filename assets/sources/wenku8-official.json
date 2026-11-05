@@ -4,7 +4,7 @@
     "bookSourceGroup": "官网",
     "bookSourceUrl": "https://www.wenku8.net",
     "bookSourceType": 0,
-    "ruleRevision": 18,
+    "ruleRevision": 19,
     "searchInterval": 6,
     "searchFields": { "title": 0, "author": 1, "all": 0 },
     "bookSourceComment": "官网 www.wenku8.net。站点在 Cloudflare 托管挑战后面，所以每个地址都带 {\"webView\":true} 让引擎走 WebView 请求，只有真实浏览器栈才拿得到 cf_clearance；搜索的 searchkey 必须 GBK，用 {\"charset\":\"gbk\"} 让引擎编码。站内导航页（index.php、articlelist.php、bookcase.php）一律要求登录，只有详情页和正文页对游客开放，所以首页栏目全部标了 requiresLogin：没有会话时它们不会发起任何请求。搜索命中唯一一本时站点直接 302 到该书详情页，所以 ruleSearch 每个字段都带了详情页的次级分支。",
@@ -18,6 +18,17 @@
       "verify": {
         "url": "https://www.wenku8.net/book/1.htm,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
         "loggedIn": "@js:result.includes('退出登录')"
+      },
+      "profile": {
+        "url": "https://www.wenku8.net/userdetail.php,{\"webView\":true,\"webViewDelayTime\":1500,\"retry\":1}",
+        "loggedIn": "@js:result.includes('退出登录') || result.includes('用户名')",
+        "id": "td:containsOwn(用户ID)+td@text",
+        "name": "td:containsOwn(用户名)+td@text",
+        "nickname": "td:containsOwn(昵称)+td@text",
+        "rank": "td:containsOwn(头衔)+td@text",
+        "score": "td:containsOwn(拥有积分)+td@text",
+        "experience": "td:containsOwn(威望值)+td@text",
+        "avatar": "img[src*=avatar]@src || img[src*=noavatar]@src"
       },
       "shelf": {
         "url": "https://www.wenku8.net/modules/article/bookcase.php,{\"webView\":true,\"webViewDelayTime\":2000}",
