@@ -70,6 +70,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
   /// instead of rendering every gated block and then yanking it away.
   bool? _signedIn;
   bool _probing = false, _pendingProbe = false;
+  DateTime? _probedAt;
 
   final Object _owner = Object();
   NovelFeedController? _feed;
@@ -104,7 +105,17 @@ class _SourceHomePageState extends State<SourceHomePage> {
   /// A block the source declares login-only is dropped until a session exists,
   /// so an anonymous profile never fires the requests that are guaranteed to
   /// bounce to the login page.
-  Future<void> _readAccount() async {
+  Future<void> _readAccount({bool force = false}) async {
+    // Every listing request invalidates the cached account state, so a probe
+    // per notification would queue a login check behind each page. The session
+    // does not change that fast; an explicit ask still goes through.
+    final last = _probedAt;
+    if (!force &&
+        _signedIn != null &&
+        last != null &&
+        DateTime.now().difference(last) < const Duration(seconds: 10)) {
+      return;
+    }
     // A probe already in flight would report the pre-login state, so remember
     // that another look is owed instead of dropping the notification.
     if (_probing) {
@@ -114,16 +125,18 @@ class _SourceHomePageState extends State<SourceHomePage> {
     _probing = true;
     try {
       final status = await widget.sources.accountStatus(widget.source);
+      _probedAt = DateTime.now();
       if (mounted) setState(() => _signedIn = status.signedIn);
     } catch (_) {
+      _probedAt = DateTime.now();
       // A failed probe must not hide blocks that may well answer.
       if (mounted) setState(() => _signedIn = true);
     } finally {
       _probing = false;
-      _syncFeed();
+      _syncSections();
       if (_pendingProbe) {
         _pendingProbe = false;
-        unawaited(_readAccount());
+        unawaited(_readAccount(force: true));
       }
     }
   }
@@ -157,6 +170,20 @@ class _SourceHomePageState extends State<SourceHomePage> {
       }
     }
     return sections.isEmpty ? null : sections.first;
+  }
+
+  /// Signing in or out changes which blocks the source offers, but a probe must
+  /// never replace the block the reader is on: re-resolving on every probe turn
+  /// a finished tap into a silent jump back to the default block, and dropped
+  /// the pages that block had already loaded. Only a block that no longer
+  /// exists -- or no feed at all -- goes back through the resolver.
+  void _syncSections() {
+    final sections = _sections;
+    if (sections == null || !mounted) return;
+    final loaded = _loaded;
+    final missing = loaded == null ||
+        !sections.any((s) => s.id == loaded.id && s.url == loaded.url);
+    if (_feed == null || missing) _syncFeed();
   }
 
   void _syncFeed() {
@@ -369,7 +396,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
     return RefreshIndicator(
       onRefresh: () async {
         _armed = false;
-        await _readAccount();
+        await _readAccount(force: true);
         await _feed?.refresh();
       },
       child: NotificationListener<ScrollNotification>(
