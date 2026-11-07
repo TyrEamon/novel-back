@@ -9441,9 +9441,15 @@ class _ReaderPageState extends State<ReaderPage>
                           ),
                         ),
                       ),
-                      // 个人版：听书入口已摘除，_listen / ListeningScope 仍保留。
-                      // 这里留一个等宽占位，标题才保持居中。
-                      const SizedBox(width: 46),
+                      SizedBox(
+                        width: 46,
+                        child: GlassIconButton(
+                          key: const ValueKey('reader-listening-entry'),
+                          icon: CupertinoIcons.headphones,
+                          label: '听书',
+                          onPressed: _listening == null ? null : _listen,
+                        ),
+                      ),
                     ],
                   ),
                 ],
