@@ -69,9 +69,16 @@ internal class SourceWebRuntime(private val context: Context) {
             check(failure == null && output.isFile) { failure ?: "书源网页渲染未完成" }
             check(output.length() <= 12 * 1024 * 1024) { "书源网页响应过大" }
             val value = Gson().fromJson(output.readText(), Map::class.java)
-            (value["cookies"] as? Map<*, *>)?.forEach { (url, cookie) -> if (url is String && cookie is String) {
-                run.cookieRemove(url); run.cookieWrite(url, cookie)
-            } }
+            // The renderer answers with the header it would send, which is empty
+            // whenever the page arrived without one: a challenge, a redirect to
+            // the login form, a cancelled render. Reading that as the truth used
+            // to clear the whole host's jar, and the emptied session was then
+            // saved to disk, so one unlucky page logged the reader out for good.
+            (value["cookies"] as? Map<*, *>)?.forEach { (url, cookie) ->
+                if (url is String && cookie is String && cookie.isNotBlank()) {
+                    run.cookieWrite(url, cookie)
+                }
+            }
             val url = value["url"]?.toString() ?: request.url
             return SourceReply(url, value["body"]?.toString().orEmpty())
         } finally {

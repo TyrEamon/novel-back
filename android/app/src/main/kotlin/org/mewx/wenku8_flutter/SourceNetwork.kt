@@ -34,6 +34,11 @@ internal class SourceNetwork(private val sessionChanged: (String) -> Unit = {}) 
         val jar = jars.computeIfAbsent(key) { CookieManager(null, CookiePolicy.ACCEPT_ORIGINAL_SERVER) }
         value.split(';').map(String::trim).filter { '=' in it }.forEach { pair ->
             val parts = pair.split('=', limit = 2)
+            // Replace the name rather than stacking a second copy: the same name
+            // can already sit under another domain (the site sets some cookies on
+            // .wenku8.net and others on www.wenku8.net), and two values for one
+            // name in the outgoing header lets the server read the stale one.
+            jar.cookieStore.get(uri).filter { it.name == parts[0] }.forEach { jar.cookieStore.remove(uri, it) }
             jar.cookieStore.add(uri, HttpCookie(parts[0], parts[1]).apply { version = 0; path = "/"; domain = uri.host; maxAge = 365L * 86400 })
         }
         if (previous != cookie(key, address)) sessionChanged(key)
