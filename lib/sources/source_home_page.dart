@@ -155,12 +155,21 @@ class _SourceHomePageState extends State<SourceHomePage> {
   }
 
   /// The block the page shows: whatever the reader picked, otherwise the
-  /// freshest one the source offers.
+  /// ranking the source lists, otherwise the freshest one it offers.
   SourceHomeSection? _resolve(List<SourceHomeSection> sections) {
     final picked = _picked;
     if (picked != null) {
       for (final section in sections) {
         if (section.id == picked.id) return section;
+      }
+    }
+    // A ranking is a stable shelf the reader can come back to; "recently
+    // updated" turns over every few minutes and reads as noise under a cover
+    // wall, so it only stands in when the source publishes no ranking at all.
+    for (final section in sections) {
+      if (section.title.contains('总排行') ||
+          section.url.contains('sort=allvisit')) {
+        return section;
       }
     }
     for (final section in sections) {
