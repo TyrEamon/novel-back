@@ -363,9 +363,9 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
   bool _programmaticTurn = false;
   bool _swipeFeedbackSent = false;
   bool _swipeCancelled = false;
-  /// Temporary: prints the paper geometry on screen so a paper-turn frame can
-  /// be read back from a screenshot instead of guessed at.
-  static const bool _paperDebug = true;
+  /// Off: the geometry readout is only for chasing a paper-turn frame from a
+  /// screenshot. Turn it back on when that is what is being debugged.
+  static const bool _paperDebug = false;
   int? _turnSpread, _swipeOrigin;
   double _turnDirection = 1;
   Widget? _chapterOutgoing;
