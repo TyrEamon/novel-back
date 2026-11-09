@@ -2104,7 +2104,8 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
                         't ${_turn.value.toStringAsFixed(3)} lift ${geometry.lift.toStringAsFixed(2)} '
                         'leaves $_perSpread\n'
                         'front 0-${front.right.toStringAsFixed(0)} '
-                        'band ${back.left.toStringAsFixed(0)}-${back.right.toStringAsFixed(0)}\n'
+                        'band ${back.left.toStringAsFixed(0)}-${back.right.toStringAsFixed(0)} '
+                        'in ${front.right.toStringAsFixed(0)}-${_frameSize.width.toStringAsFixed(0)}\n'
                         'spread $spread > ${_turnSpread ?? '-'} '
                         'origin ${_swipeOrigin ?? '-'} first $first\n'
                         'pages ${_pagination?.pages.length ?? 0}',

@@ -173,8 +173,12 @@ class ReaderPaperPainter extends SnapshotPainter {
       return;
     }
     final geometry = clock.geometry(size, config.gap);
+    // A turn only ever owns the strip the outgoing page has already given up:
+    // excluding the band alone lets the incoming page paint over the part of
+    // the outgoing page that still sits to the left of the fold, which reads as
+    // two different texts on one screen.
     final obstruction = config.incoming
-        ? geometry.sheet
+        ? (config.single ? geometry.front.outline : geometry.sheet)
         : geometry.back.outline;
     final visible = Path.combine(
       PathOperation.difference,
