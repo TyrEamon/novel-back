@@ -215,6 +215,45 @@ class ReaderPaperPainter extends SnapshotPainter {
       );
       canvas.restore();
     });
+    if (config.single && !config.incoming) {
+      _paintCurl(context, offset, size, geometry);
+    }
+  }
+
+  /// The strip the fold has lifted is the back of the same sheet, so it is
+  /// filled with this page's own paper and shaded toward the roll instead of
+  /// being left as a hole or a copy of the text.
+  void _paintCurl(
+    PaintingContext context,
+    Offset offset,
+    Size size,
+    ReaderPaperGeometry geometry,
+  ) {
+    final curl = _path(geometry.back.outline, size);
+    final rect = curl.getBounds();
+    if (rect.isEmpty) return;
+    final canvas = context.canvas;
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+    final ahead = Color.lerp(config.paper, const Color(0xff000000), .04)!;
+    final roll = Color.lerp(config.paper, const Color(0xff000000), .30)!;
+    canvas.drawPath(
+      curl,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: config.fromRight ? [ahead, roll] : [roll, ahead],
+        ).createShader(rect),
+    );
+    canvas.drawPath(
+      curl,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = const Color(0xff000000).withValues(alpha: .16),
+    );
+    canvas.restore();
   }
 
   @override
