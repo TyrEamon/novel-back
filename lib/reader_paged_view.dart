@@ -363,6 +363,9 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
   bool _programmaticTurn = false;
   bool _swipeFeedbackSent = false;
   bool _swipeCancelled = false;
+  /// Temporary: prints the paper geometry on screen so a paper-turn frame can
+  /// be read back from a screenshot instead of guessed at.
+  static const bool _paperDebug = true;
   int? _turnSpread, _swipeOrigin;
   double _turnDirection = 1;
   Widget? _chapterOutgoing;
@@ -2069,7 +2072,56 @@ class _ReaderPagedViewState extends State<ReaderPagedView>
           child: reconfigured,
         ),
       );
-      return viewport;
+      if (!_paperDebug || _effect != ReaderPageEffect.paper) return viewport;
+      final spread = _spreadFor(_page);
+      final first = spread * _perSpread - _leadingPages;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          viewport,
+          Positioned(
+            left: 6,
+            top: MediaQuery.paddingOf(context).top + 4,
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _turn,
+                builder: (context, _) {
+                  final geometry = _paperClock.geometry(_frameSize, 0);
+                  final front = geometry.front.outline.getBounds();
+                  final back = geometry.back.outline.getBounds();
+                  return DecoratedBox(
+                    key: const ValueKey('reader-paper-debug'),
+                    decoration: BoxDecoration(
+                      color: const Color(0xcc000000),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Text(
+                        't ${_turn.value.toStringAsFixed(3)} lift ${geometry.lift.toStringAsFixed(2)} '
+                        'leaves $_perSpread\n'
+                        'front 0-${front.right.toStringAsFixed(0)} '
+                        'band ${back.left.toStringAsFixed(0)}-${back.right.toStringAsFixed(0)}\n'
+                        'spread $spread > ${_turnSpread ?? '-'} '
+                        'origin ${_swipeOrigin ?? '-'} first $first\n'
+                        'pages ${_pagination?.pages.length ?? 0}',
+                        style: const TextStyle(
+                          color: Color(0xff9ef0a0),
+                          fontSize: 10,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      );
     },
   );
 }
