@@ -148,22 +148,55 @@ class ReaderContent {
 /// Standalone paired markers in persisted reader content. Images keep their
 /// paragraph index, so bookmarks and lazy restoration share one coordinate map.
 String? readerIllustrationUrl(String paragraph) {
+  final urls = readerIllustrationUrls(paragraph);
+  return urls.isEmpty ? null : urls.first;
+}
+
+/// Every illustration a stand-alone image paragraph carries. Bodies written
+/// before the source separated back-to-back images hold both markers in one
+/// paragraph, and the reader has to see that as images rather than as markup.
+List<String> readerIllustrationUrls(String paragraph) {
   const marker = '<!--image-->';
   final text = paragraph.trim();
   if (!text.startsWith(marker) || text.length <= marker.length * 2) {
-    return null;
+    return const [];
   }
-  final end = text.indexOf(marker, marker.length);
-  if (end < 0) return null;
-  final tail = text.substring(end + marker.length).trim();
-  final raw = text.substring(marker.length, end).trim();
-  final uri = Uri.tryParse(raw);
-  if (uri != null && LocalBookMedia.valid(uri)) {
-    return LocalImageLayout.parseSuffix(tail) == null ? null : uri.toString();
+  final urls = <String>[];
+  var cursor = 0;
+  while (cursor < text.length) {
+    if (!text.startsWith(marker, cursor)) return const [];
+    final end = text.indexOf(marker, cursor + marker.length);
+    if (end < 0) return const [];
+    final raw = text.substring(cursor + marker.length, end).trim();
+    final tail = text.substring(end + marker.length).trim();
+    final uri = Uri.tryParse(raw);
+    if (uri != null && LocalBookMedia.valid(uri)) {
+      // A local book keeps its layout hint after the marker, so the hint is the
+      // rest of the paragraph rather than another image.
+      return LocalImageLayout.parseSuffix(tail) == null
+          ? const []
+          : [uri.toString()];
+    }
+    final url = _readerImageUrl(uri, raw);
+    if (url == null) return const [];
+    urls.add(url);
+    cursor = end + marker.length;
+    while (cursor < text.length && text[cursor].trim().isEmpty) {
+      cursor++;
+    }
   }
-  if (tail.isNotEmpty) return null;
-  if (uri == null ||
-      !['https', 'http'].contains(uri.scheme) ||
+  return urls.isEmpty ? const [] : List.unmodifiable(urls);
+}
+
+/// Accepts what a chapter body can hold: a fetchable address, or a locator the
+/// source layer resolves with the options its own rules need.
+String? _readerImageUrl(Uri? uri, String raw) {
+  if (uri == null) return null;
+  if (uri.scheme == 'source-image') {
+    if (int.tryParse(uri.host) == null) return null;
+    return (uri.queryParameters['url'] ?? '').isEmpty ? null : raw;
+  }
+  if (!['https', 'http'].contains(uri.scheme) ||
       uri.userInfo.isNotEmpty ||
       (uri.hasPort && ![80, 443].contains(uri.port)) ||
       uri.host.isEmpty) {

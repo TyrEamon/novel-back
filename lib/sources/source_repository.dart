@@ -633,17 +633,24 @@ class SourceNovelRepository extends ChangeNotifier
         final detail = rule is Map ? '${rule['content'] ?? '未配置内容规则'}' : '缺失';
         throw SourceFailure('正文为空，正文规则：$detail');
       }
-      return text.replaceAllMapped(
-        RegExp(r'<!--image-->(.*?)<!--image-->', dotAll: true),
-        (m) {
-          final locator = sourceImageLocator(
-            novelId,
-            m[1]!.trim(),
-            referrer: target.url ?? '',
-          );
-          return locator == null ? '[插图]' : '<!--image-->$locator<!--image-->';
-        },
-      );
+      // Two illustrations in a row arrive as one paragraph unless they are
+      // separated here: the reader recognises an image paragraph by a single
+      // marker pair, so a packed pair would be shown as its own markup.
+      return text
+          .replaceAllMapped(
+            RegExp(r'<!--image-->(.*?)<!--image-->', dotAll: true),
+            (m) {
+              final locator = sourceImageLocator(
+                novelId,
+                m[1]!.trim(),
+                referrer: target.url ?? '',
+              );
+              return locator == null
+                  ? '[插图]'
+                  : '<!--image-->$locator<!--image-->';
+            },
+          )
+          .replaceAll('<!--image--><!--image-->', '<!--image-->\n<!--image-->');
     },
   );
   String? _nextChapter(int id, int chapter) {
