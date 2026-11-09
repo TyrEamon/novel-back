@@ -1761,6 +1761,22 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
               if (!name) { window.result = 'FORM_MISSING'; return; }
               name.value = $user;
               secret.value = $pass;
+              // The site defaults this to a session cookie ("浏览器进程"), which
+              // dies with the process. Pick the longest option it offers.
+              var keep = form.querySelector('select');
+              if (keep) {
+                var pick = null, longest = -1;
+                for (var i = 0; i < keep.options.length; i++) {
+                  var option = keep.options[i];
+                  if (/一年|1年|365/.test(option.text)) { pick = option; break; }
+                  var days = parseInt(option.value, 10);
+                  if (!isNaN(days) && days > longest) { longest = days; pick = option; }
+                }
+                if (pick) {
+                  keep.value = pick.value;
+                  keep.dispatchEvent(new Event('change', {bubbles:true}));
+                }
+              }
               ['input','change'].forEach(function(kind){
                 name.dispatchEvent(new Event(kind, {bubbles:true}));
                 secret.dispatchEvent(new Event(kind, {bubbles:true}));
