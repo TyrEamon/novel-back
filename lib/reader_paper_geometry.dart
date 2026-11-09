@@ -89,7 +89,14 @@ class ReaderPaperGeometry {
 
   _Roll _roll(double y) {
     final taper = _taper(y);
-    final radius = math.min(.1 * _w, 38.0) * _envelope * taper;
+    // The sheet gathers into the roll quickly, so the region it has left behind
+    // (everything to the left of the band) is already the next page past the
+    // middle of the turn. A narrow roll kept the outgoing text on screen for
+    // most of the gesture, which reads as the pages barely moving.
+    final radius =
+        math.min(.34 * _w, 120.0) *
+        math.pow(_envelope, .6).toDouble() *
+        taper;
     // The lag is what sweeps the spine: without it every row would fold on the
     // same vertical line and the turn would read as a hinge.
     final lead = .09 * _w * _envelope * (1 - taper);
@@ -209,7 +216,7 @@ class ReaderPaperGeometry {
       final current = _roll(y);
       // A turn past the crease covers roughly the rolled arc as seen from the
       // front, foreshortened by the angle it has come round.
-      final span = current.radius * math.sin(current.angle) * .92;
+      final span = current.radius * math.sin(current.angle);
       right[r] = current.edge;
       left[r] = current.edge - span;
       for (var c = 0; c < columns; c++) {
