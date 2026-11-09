@@ -72,10 +72,15 @@ class _ReaderSpineTurnState extends State<ReaderSpineTurn> {
   final _snapshot = SnapshotController();
   late ReaderPaperClock _clock;
   late ReaderPaperPainter _painter;
+  /// The face that gets rolled up has to be redrawn away from its own paint
+  /// position, so it needs a snapshot. The page being left behind stays where
+  /// it is and reads better painted live: a snapshot of it can come back empty
+  /// and leave the half of the screen the fold has not reached yet blank.
+  bool get _needsSnapshot => widget.active && (widget.incoming || !widget.single);
   void _setup() {
     _clock = widget.clock ?? ReaderPaperClock(widget.animation);
     _painter = ReaderPaperPainter(widget, _clock);
-    _snapshot.allowSnapshotting = widget.active;
+    _snapshot.allowSnapshotting = _needsSnapshot;
   }
 
   @override
@@ -95,7 +100,7 @@ class _ReaderSpineTurnState extends State<ReaderSpineTurn> {
       _snapshot.clear();
     } else {
       _painter.update(widget);
-      _snapshot.allowSnapshotting = widget.active;
+      _snapshot.allowSnapshotting = _needsSnapshot;
     }
   }
 
