@@ -304,9 +304,17 @@ class SourceNovelRepository extends ChangeNotifier
       store.selectedExplore == null &&
       (discoverySource?.homeSections.isNotEmpty ?? false);
 
+  /// When a session was last established or dropped. A page that hid its
+  /// login-only blocks needs to know this happened on purpose, so it can reveal
+  /// them without spending another renderer round trip on a probe.
+  DateTime? lastSessionChange;
+
   /// Login can change both scripted discovery choices and protected listings.
   /// Invalidate failed/finished cursors and notify the existing feed listeners.
-  void sessionChanged() => _changed();
+  void sessionChanged() {
+    lastSessionChange = DateTime.now();
+    _changed();
+  }
 
   void _changed() {
     _revision++;

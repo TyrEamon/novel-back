@@ -59,7 +59,7 @@ internal data class SourceWebRequest(val url: String, val html: String? = null, 
 internal class SourceRun(
     val fetch: (String, String, Map<String, String>, ByteArray?) -> SourceReply,
     val cancelled: () -> Boolean = { false },
-    deadline: Long = System.nanoTime() + 30_000_000_000L,
+    deadline: Long = System.nanoTime() + 60_000_000_000L,
     val state: SourceState = SourceState(),
     val fetchOptions: ((String, String, Map<String, String>, ByteArray?, SourceHttpOptions) -> SourceReply)? = null,
     val web: ((SourceWebRequest) -> SourceReply)? = null,
@@ -86,6 +86,11 @@ internal class SourceRun(
         deadline = start + 5 * 60_000_000_000L
         try { return action() } finally { deadline = saved + (System.nanoTime() - start) }
     }
+
+    /** Waiting for a shared renderer is not the rule spending its own budget.
+     * A request queued behind a login page or a challenge still deserves the
+     * full timeout once it starts, otherwise it expires before it ever runs. */
+    fun extendDeadlineBy(nanos: Long) { if (nanos > 0) deadline += nanos }
     var requests = 0
     @Synchronized fun countRequest() { check(); check(++requests <= 96) { "书源请求次数超出限制" } }
     private val stopped = java.util.concurrent.atomic.AtomicBoolean()

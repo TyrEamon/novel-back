@@ -78,6 +78,11 @@ class _SourceHomePageState extends State<SourceHomePage> {
   SourceHomeSection? _picked;
   int _topUps = 0;
 
+  /// A first page that died on a timeout or a challenge page is worth one
+  /// retry of its own: by then the queue it was stuck behind is empty, so the
+  /// second attempt is the one that would have worked had the reader tapped.
+  bool _autoRetried = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +92,22 @@ class _SourceHomePageState extends State<SourceHomePage> {
   }
 
   void _changed() {
+    // A sign-in or sign-out is an explicit answer about the session, so the
+    // gated blocks open right away instead of waiting for a probe that would
+    // only queue another renderer request behind the one that just finished.
+    final stamp = widget.sources.lastSessionChange;
+    if (stamp != null &&
+        DateTime.now().difference(stamp) < const Duration(seconds: 5)) {
+      _probedAt = DateTime.now();
+      _autoRetried = false;
+      if (mounted) setState(() => _signedIn = true);
+      final before = _feed;
+      _syncSections();
+      // A block that survived the change keeps its books but was loaded without
+      // the new session, so it is re-pulled rather than trusted.
+      if (before != null && identical(_feed, before)) unawaited(before.refresh());
+      return;
+    }
     unawaited(_readAccount());
   }
 
@@ -94,6 +115,20 @@ class _SourceHomePageState extends State<SourceHomePage> {
   /// only reports what it reads at build time, so the page has to rebuild when
   /// the feed moves or a tap on 加载更多 would change nothing on screen.
   void _onFeedChanged() {
+    final feed = _feed;
+    if (feed != null && feed.items.isNotEmpty) {
+      _autoRetried = false;
+    } else if (feed != null &&
+        feed.error != null &&
+        !feed.loading &&
+        !_autoRetried) {
+      _autoRetried = true;
+      Future<void>.delayed(const Duration(milliseconds: 1200), () {
+        if (!mounted || !identical(_feed, feed)) return;
+        if (feed.error == null || feed.loading) return;
+        unawaited(feed.retry());
+      });
+    }
     if (mounted) setState(() {});
   }
 
@@ -123,10 +158,15 @@ class _SourceHomePageState extends State<SourceHomePage> {
       return;
     }
     _probing = true;
+    final started = DateTime.now();
     try {
       final status = await widget.sources.accountStatus(widget.source);
       _probedAt = DateTime.now();
-      if (mounted) setState(() => _signedIn = status.signedIn);
+      // A probe that began before a sign-in answers for the session that no
+      // longer exists; the sign-in itself is the newer, better answer.
+      final stamp = widget.sources.lastSessionChange;
+      final answered = stamp != null && stamp.isAfter(started);
+      if (mounted) setState(() => _signedIn = answered ? true : status.signedIn);
     } catch (_) {
       _probedAt = DateTime.now();
       // A failed probe must not hide blocks that may well answer.
@@ -211,6 +251,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
     _feed = null;
     _loaded = target;
     _topUps = 0;
+    _autoRetried = false;
     widget.sources.cancelHome(_owner);
     if (target == null) {
       setState(() {});
@@ -245,6 +286,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
     if (same) {
       final feed = _feed;
       if (feed != null && (feed.error != null || feed.items.isEmpty)) {
+        _autoRetried = false;
         unawaited(feed.retry());
       }
       return;
@@ -412,6 +454,7 @@ class _SourceHomePageState extends State<SourceHomePage> {
     return RefreshIndicator(
       onRefresh: () async {
         _armed = false;
+        _autoRetried = false;
         await _readAccount(force: true);
         await _feed?.refresh();
       },

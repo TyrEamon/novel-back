@@ -64,7 +64,18 @@ internal class SourceWebRuntime(private val context: Context) {
             val flags = Context.BIND_AUTO_CREATE or if (request.interactive && Build.VERSION.SDK_INT >= 34) Context.BIND_ALLOW_ACTIVITY_STARTS else 0
             bound = context.bindService(Intent(context, SourceWebService::class.java), connection, flags)
             check(bound) { "书源网页渲染无法启动" }
-            while (!complete.await(100, TimeUnit.MILLISECONDS)) run.check()
+            // The budget measures the request, not the time it spends waiting
+            // behind another one: a first launch signs in while three requests
+            // are already queued, and charging that wait to all of them expired
+            // the listing before its page had even loaded.
+            var waited = 0L
+            while (!complete.await(100, TimeUnit.MILLISECONDS)) {
+                if (waited < 90_000_000_000L) {
+                    waited += 100_000_000L
+                    run.extendDeadlineBy(100_000_000L)
+                }
+                run.check()
+            }
             run.check()
             check(failure == null && output.isFile) { failure ?: "书源网页渲染未完成" }
             check(output.length() <= 12 * 1024 * 1024) { "书源网页响应过大" }

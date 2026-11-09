@@ -263,7 +263,7 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
         val epoch = sessionEpochs.computeIfAbsent(key) { java.util.concurrent.atomic.AtomicInteger() }.get()
         check(!clearing.contains(key)) { "书源登录信息正在清理，请稍后重试" }
         run = SourceRun(
-            deadline = System.nanoTime() + if (interactive) 10 * 60_000_000_000L else 30_000_000_000L,
+            deadline = System.nanoTime() + if (interactive) 10 * 60_000_000_000L else 60_000_000_000L,
             fetch = { url, method, headers, body -> network.text(key, url, method, headers, body, run) },
             fetchOptions = { url, method, headers, body, options -> network.text(key, url, method, headers, body, run, options) },
             fetchBytes = { url, method, headers, body, options -> network.bytes(key, url, method, headers, body, run, options).let { SourceReply(it.url, "", it.status, it.headers, it.data) } },
