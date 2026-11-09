@@ -147,6 +147,10 @@ class WenkuAccount extends ChangeNotifier {
   }
 
   Future<void> login(String username, String password) => signIn(username, password);
+
+  /// The daily check-in is a source rule, not something this shell can call on
+  /// its own; the button is only offered when a source declares that rule.
+  Future<void> checkIn() => _unavailable();
   Future<void> connectPublications(String password) => _unavailable();
   Future<List<CloudBook>> refreshCloud() => _unavailable();
   Future<CloudShelfPlan> exchangeShelf({
