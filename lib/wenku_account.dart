@@ -47,10 +47,13 @@ class WenkuAccount extends ChangeNotifier {
   WenkuAccount({
     Future<SourceAccountProfile?> Function()? loadProfile,
     Future<void> Function()? signOut,
+    Future<bool> Function(String username, String password)? passwordLogin,
   }) : _loadProfile = loadProfile,
-       _signOut = signOut;
+       _signOut = signOut,
+       _passwordLogin = passwordLogin;
   final Future<SourceAccountProfile?> Function()? _loadProfile;
   final Future<void> Function()? _signOut;
+  final Future<bool> Function(String username, String password)? _passwordLogin;
   Uint8List? avatar;
   String? avatarUrl;
   bool authenticated = false, busy = false, signedToday = false;
@@ -116,9 +119,35 @@ class WenkuAccount extends ChangeNotifier {
     }
   }
 
-  Future<void> login(String username, String password) => _unavailable();
+  /// True when a source can carry a password into the site's own login form.
+  bool get canPasswordLogin => _passwordLogin != null;
+
+  /// Signs in with the account password. The password is handed to the source
+  /// WebView for the one submission and is not kept here or in storage.
+  Future<void> signIn(String username, String password) async {
+    final login = _passwordLogin;
+    if (login == null) return _unavailable<void>();
+    if (busy) return;
+    busy = true;
+    operation = 'login';
+    error = null;
+    notifyListeners();
+    var ok = false;
+    try {
+      ok = await login(username, password);
+      if (!ok) error = '登录未完成，请检查账号与密码';
+    } catch (failure) {
+      error = describeError(failure);
+    } finally {
+      busy = false;
+      operation = null;
+      notifyListeners();
+    }
+    if (ok) await refreshProfile();
+  }
+
+  Future<void> login(String username, String password) => signIn(username, password);
   Future<void> connectPublications(String password) => _unavailable();
-  Future<void> signIn() => _unavailable();
   Future<List<CloudBook>> refreshCloud() => _unavailable();
   Future<CloudShelfPlan> exchangeShelf({
     required Set<int> local,

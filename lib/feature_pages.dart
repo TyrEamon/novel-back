@@ -188,7 +188,6 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
   final _username = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
-  bool _webLogin = false;
   bool _canCheckIn = false;
   @override
   void initState() {
@@ -197,7 +196,6 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
     final bundled = sources?.store.sources
         .where((source) => source.key == 'https://www.wenku8.net')
         .firstOrNull;
-    _webLogin = bundled != null;
     if (sources != null && bundled != null) {
       unawaited(() async {
         try {
@@ -235,9 +233,29 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
   }
 
   Future<void> _login() async {
-    // The bundled wenku8 source knows how to drive the site's own login page
-    // inside a real WebView, which is the only place the account password can
-    // be used: the published 0.5.5 shell has no account API of its own.
+    final account = widget.account;
+    if (account.busy) return;
+    // The site only accepts its password from a page it served itself, and its
+    // challenge cannot be answered by a plain post, so the sign-in runs the
+    // real form inside the source's own WebView. Typing here is the shortcut;
+    // opening the page stays available when a login needs a captcha.
+    if (!account.canPasswordLogin) return _openWebLogin();
+    if (_username.text.trim().isEmpty || _password.text.isEmpty) {
+      showNovelFeedback(context, '请输入账号与密码');
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    await account.signIn(_username.text.trim(), _password.text);
+    if (!mounted) return;
+    // The account holds the failure in its own live region, so the toast only
+    // speaks when the site actually took the password.
+    if (account.authenticated && account.error == null) {
+      showNovelFeedback(context, '登录成功');
+      _password.clear();
+    }
+  }
+
+  Future<void> _openWebLogin() async {
     final sources = sourceRepositoryOf(widget.repository);
     final bundled = sources?.store.sources
         .where((source) => source.key == 'https://www.wenku8.net')
@@ -329,9 +347,10 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // The site accepts its password only on its own page, so
-                        // a form here would collect a secret nothing can use.
-                        if (!_webLogin) ...[
+                        // The form is a shortcut into the site's own login page:
+                        // the fields are handed to that page's form inside the
+                        // source WebView, never posted from here.
+                        if (account.canPasswordLogin) ...[
                           TextField(
                             key: const ValueKey('account-username'),
                             onTap: () =>
@@ -389,14 +408,22 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                           const Padding(
                             padding: EdgeInsets.only(bottom: 16),
                             child: AppText(
-                              '轻小说文库的账号密码只由官网自己的登录页接收，点下面按钮会打开官方登录页；登录完成返回后，书架、书评与这里的资料都会带上登录态。',
+                              '登录由文库自己的登录页完成，点下面按钮会打开官方登录页；登录完成返回后，书架、书评与这里的资料都会带上登录态。',
                               style: TextStyle(fontSize: 13, height: 1.5),
                             ),
                           ),
+                        if (account.canPasswordLogin) ...[
+                          GlassTextButton(
+                            key: const ValueKey('account-login'),
+                            onPressed: account.busy ? null : _login,
+                            child: const AppText('登录'),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         GlassTextButton(
-                          key: const ValueKey('account-login'),
-                          onPressed: account.busy ? null : _login,
-                          child: AppText(_webLogin ? '打开官网登录' : '登录'),
+                          key: const ValueKey('account-login-web'),
+                          onPressed: account.busy ? null : _openWebLogin,
+                          child: const AppText('打开官网登录'),
                         ),
                       ],
                     ),

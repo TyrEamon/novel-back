@@ -107,6 +107,27 @@ class SourceNovelRepository extends ChangeNotifier
     }
   }
 
+  /// Signs in through the site's own form, driven inside the WebView that
+  /// already answered the site's challenge. The session it leaves behind is the
+  /// one every other request reuses, so nothing else has to know a password.
+  Future<bool> signIn(
+    BookSource source, {
+    required String username,
+    required String password,
+    String? requestId,
+  }) async {
+    try {
+      return await platform.passwordLogin(
+        source,
+        username: username,
+        password: password,
+        requestId: requestId,
+      );
+    } finally {
+      refreshAccount(source.key);
+    }
+  }
+
   /// The account card's metadata, read from the source's own profile page. A
   /// null answer is the source reporting "not signed in", not an error: the
   /// card then shows the login invitation instead of a failure.

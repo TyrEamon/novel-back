@@ -68,6 +68,8 @@ WenkuAccount sourceAccount(
   if (remote == null || source == null) return WenkuAccount();
   return WenkuAccount(
     loadProfile: () => remote.accountProfile(source),
+    passwordLogin: (username, password) =>
+        remote.signIn(source, username: username, password: password),
     signOut: () async {
       await remote.platform.clearSession(source);
       remote.sessionChanged();

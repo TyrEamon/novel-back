@@ -35,6 +35,28 @@ class SourcePlatform {
 
   Future<void> cancel(String requestId) =>
       channel.invokeMethod('cancel', requestId);
+
+  /// Signs in by typing the password into the site's own login form inside the
+  /// source WebView. The challenge in front of the site cannot be answered by a
+  /// plain post, so the form has to submit itself from in there.
+  Future<bool> passwordLogin(
+    BookSource source, {
+    required String username,
+    required String password,
+    String? requestId,
+  }) async {
+    try {
+      return await channel.invokeMethod<bool>('passwordLogin', {
+            'source': source.data,
+            'username': username,
+            'password': password,
+            'requestId': requestId,
+          }) ??
+          false;
+    } on PlatformException catch (error) {
+      throw SourceFailure(error.message ?? '登录未完成');
+    }
+  }
   Future<BookSource> inspectScript(String text) async => BookSource(
     Map<String, dynamic>.from(
       await channel.invokeMapMethod<String, dynamic>('inspectScript', text) ??

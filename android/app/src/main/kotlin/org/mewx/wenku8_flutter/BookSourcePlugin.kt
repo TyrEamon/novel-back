@@ -254,6 +254,44 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 }
             }
             "image" -> background(result, imageIo) { image(call.arguments as Map<String, Any?>) }
+            "passwordLogin" -> {
+                val args = call.arguments as Map<String, Any?>
+                val source = args["source"] as Map<String, Any?>
+                val key = source["bookSourceUrl"] as String
+                val username = (args["username"] as? String).orEmpty().trim()
+                val password = (args["password"] as? String).orEmpty()
+                check(username.isNotBlank() && password.isNotBlank()) { "请输入账号与密码" }
+                check(accountRunning.add(key)) { "书源账号操作正在进行，请稍后重试" }
+                background(result) {
+                    val id = java.util.UUID.randomUUID().toString()
+                    try {
+                        restoreSession(key)
+                        val run = createRun(key, AtomicBoolean(false), label = source["bookSourceName"]?.toString())
+                        running[id] = run; runSources[id] = key
+                        val engine = BookSourceEngine(source, run)
+                        val submit = run.web!!.invoke(
+                            engine.loginWebRequest(mapOf("username" to username, "password" to password))
+                        )
+                        when {
+                            submit.body.contains("FORM_MISSING") ->
+                                throw IllegalStateException("登录页没有找到密码输入框，请改用官网登录")
+                            submit.body.contains("CAPTCHA") ->
+                                throw IllegalStateException("文库登录页需要验证码，请改用官网登录")
+                        }
+                        // The submitted form navigates on its own; reading the
+                        // profile page afterwards is what tells the session apart
+                        // from a bounced-back login form.
+                        val landing = run.web!!.invoke(engine.loginProbeRequest())
+                        val signedIn = landing.body.contains("退出登录")
+                        if (signedIn) SourceAccountState.verified(run.state, true)
+                        saveSession(key)
+                        main.post { channel?.invokeMethod("sessionUpdated", mapOf("source" to key)) }
+                        signedIn
+                    } finally {
+                        accountRunning.remove(key); running.remove(id); runSources.remove(id)
+                    }
+                }
+            }
             else -> result.notImplemented()
         }
     }

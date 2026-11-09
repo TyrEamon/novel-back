@@ -1726,10 +1726,49 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val nextState = command["state"] as? Map<*, *>
         return (if (nextState != null) renderLoginV2(nextState) else mapOf("version" to 2)) + command
     }
-    fun loginWebRequest(): SourceWebRequest {
+    fun loginWebRequest(login: Map<String, String>? = null): SourceWebRequest {
         val url = source["loginUrl"]?.toString().orEmpty()
         require(url.startsWith("http")) { "书源没有提供网页登录地址" }
-        return SourceWebRequest(url, headers = requestHeaders(), interactive = true)
+        return SourceWebRequest(url, script = login?.let { fillLoginScript(it) },
+            headers = requestHeaders(), interactive = true)
+    }
+
+    /** Which page proves the sign-in took. Every page carries the sign-out link
+     * once the session is real, and the profile page refuses guests, so the
+     * same read answers both "did it work" and "what does it say now". */
+    fun loginProbeRequest(): SourceWebRequest {
+        val profile = SourceAccountRules(source["ruleAccount"]).profile()?.get("url")?.toString()
+        val address = profile?.substringBefore(',')?.trim()?.takeIf { it.startsWith("http") }
+        val base = source["bookSourceUrl"]?.toString().orEmpty().trimEnd('/')
+        return SourceWebRequest(address ?: "$base/modules/article/bookcase.php",
+            headers = requestHeaders(), interactive = true)
+    }
+
+    /** The challenge in front of this site cannot be answered by a plain post,
+     * so the password is typed into the page's own form and that form submits
+     * itself from inside the WebView. Field names differ between mirrors, which
+     * is why the password input picks its own form instead of naming a URL. */
+    private fun fillLoginScript(login: Map<String, String>): String {
+        val user = org.json.JSONObject.quote(login["username"].orEmpty())
+        val pass = org.json.JSONObject.quote(login["password"].orEmpty())
+        return """
+            (function(){
+              var secret = document.querySelector('input[type=password]');
+              var form = secret && secret.form;
+              if (!form) { window.result = 'FORM_MISSING'; return; }
+              if (/验证码/.test(document.documentElement.innerText)) { window.result = 'CAPTCHA'; return; }
+              var name = form.querySelector('input[type=text], input[type=email], input:not([type])');
+              if (!name) { window.result = 'FORM_MISSING'; return; }
+              name.value = $user;
+              secret.value = $pass;
+              ['input','change'].forEach(function(kind){
+                name.dispatchEvent(new Event(kind, {bubbles:true}));
+                secret.dispatchEvent(new Event(kind, {bubbles:true}));
+              });
+              window.result = 'SUBMITTED';
+              if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+            })();
+        """.trimIndent()
     }
     private fun installEntityBindings(cx: Context, target: TopLevel) {
         fun add(obj: Scriptable, name: String, work: (Array<out Any>) -> Any?) {
