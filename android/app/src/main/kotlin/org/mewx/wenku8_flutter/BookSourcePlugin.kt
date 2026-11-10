@@ -283,7 +283,10 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                         // from a bounced-back login form.
                         val landing = run.web!!.invoke(engine.loginProbeRequest())
                         val signedIn = landing.body.contains("退出登录")
-                        if (signedIn) SourceAccountState.verified(run.state, true)
+                        if (!signedIn) throw IllegalStateException(
+                            "登录未成功：请确认账号与密码；若文库此时要求验证码，请改用官网登录"
+                        )
+                        SourceAccountState.verified(run.state, true)
                         saveSession(key)
                         main.post { channel?.invokeMethod("sessionUpdated", mapOf("source" to key)) }
                         signedIn

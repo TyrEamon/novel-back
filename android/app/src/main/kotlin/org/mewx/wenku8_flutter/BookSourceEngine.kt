@@ -1729,8 +1729,17 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
     fun loginWebRequest(login: Map<String, String>? = null): SourceWebRequest {
         val url = source["loginUrl"]?.toString().orEmpty()
         require(url.startsWith("http")) { "书源没有提供网页登录地址" }
-        return SourceWebRequest(url, script = login?.let { fillLoginScript(it) },
-            headers = requestHeaders(), interactive = true)
+        // Typing a password is a background job: the reader asked for a sign-in,
+        // not for a browser. Only the hand-driven page (no credentials) is shown,
+        // and even that still needs the interactive session that clears the
+        // challenge for a human.
+        return SourceWebRequest(
+            url,
+            script = login?.let { fillLoginScript(it) },
+            headers = requestHeaders(),
+            delay = if (login == null) 0L else 2_500L,
+            interactive = login == null,
+        )
     }
 
     /** Which page proves the sign-in took. Every page carries the sign-out link
@@ -1741,7 +1750,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val address = profile?.substringBefore(',')?.trim()?.takeIf { it.startsWith("http") }
         val base = source["bookSourceUrl"]?.toString().orEmpty().trimEnd('/')
         return SourceWebRequest(address ?: "$base/modules/article/bookcase.php",
-            headers = requestHeaders(), interactive = true)
+            headers = requestHeaders(), delay = 4_000L, interactive = false)
     }
 
     /** The challenge in front of this site cannot be answered by a plain post,
@@ -1753,37 +1762,43 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
         val pass = org.json.JSONObject.quote(login["password"].orEmpty())
         return """
             (function(){
-              var secret = document.querySelector('input[type=password]');
-              var form = secret && secret.form;
-              if (!form) { window.result = 'FORM_MISSING'; return; }
-              if (/验证码/.test(document.documentElement.innerText)) { window.result = 'CAPTCHA'; return; }
-              var name = form.querySelector('input[type=text], input[type=email], input:not([type])');
-              if (!name) { window.result = 'FORM_MISSING'; return; }
-              name.value = $user;
-              secret.value = $pass;
-              // The site defaults this to a session cookie ("浏览器进程"), which
-              // dies with the process. Pick the longest option it offers.
-              var keep = form.querySelector('select');
-              if (keep) {
-                var pick = null, longest = -1;
-                for (var i = 0; i < keep.options.length; i++) {
-                  var option = keep.options[i];
-                  if (/一年|1年|365/.test(option.text)) { pick = option; break; }
-                  var days = parseInt(option.value, 10);
-                  if (!isNaN(days) && days > longest) { longest = days; pick = option; }
+              var tries = 0;
+              function act(){
+                var secret = document.querySelector('input[type=password]');
+                var form = secret && secret.form;
+                var name = form && form.querySelector('input[type=text], input[type=email], input:not([type])');
+                // A challenge page has no form yet, so an empty read here is
+                // "not ready", not "this login page is broken": wait it out
+                // instead of failing the sign-in before the reader can answer.
+                if (!form || !name) { if (++tries < 30) setTimeout(act, 400); return; }
+                if (/验证码/.test(document.documentElement.innerText)) { window.result = 'CAPTCHA'; return; }
+                name.value = $user;
+                secret.value = $pass;
+                // The site defaults this to a session cookie ("浏览器进程"), which
+                // dies with the process. Pick the longest option it offers.
+                var keep = form.querySelector('select');
+                if (keep) {
+                  var pick = null, longest = -1;
+                  for (var i = 0; i < keep.options.length; i++) {
+                    var option = keep.options[i];
+                    if (/一年|1年|365/.test(option.text)) { pick = option; break; }
+                    var days = parseInt(option.value, 10);
+                    if (!isNaN(days) && days > longest) { longest = days; pick = option; }
+                  }
+                  if (pick) {
+                    keep.value = pick.value;
+                    keep.dispatchEvent(new Event('change', {bubbles:true}));
+                  }
                 }
-                if (pick) {
-                  keep.value = pick.value;
-                  keep.dispatchEvent(new Event('change', {bubbles:true}));
-                }
+                ['input','change'].forEach(function(kind){
+                  name.dispatchEvent(new Event(kind, {bubbles:true}));
+                  secret.dispatchEvent(new Event(kind, {bubbles:true}));
+                });
+                if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
               }
-              ['input','change'].forEach(function(kind){
-                name.dispatchEvent(new Event(kind, {bubbles:true}));
-                secret.dispatchEvent(new Event(kind, {bubbles:true}));
-              });
-              window.result = 'SUBMITTED';
-              if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+              act();
             })();
+            'PENDING'
         """.trimIndent()
     }
     private fun installEntityBindings(cx: Context, target: TopLevel) {
