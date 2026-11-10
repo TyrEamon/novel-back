@@ -24,19 +24,6 @@ import org.htmlunit.corejs.javascript.Scriptable
 import org.htmlunit.corejs.javascript.ScriptableObject
 import org.htmlunit.corejs.javascript.Undefined
 
-/** The sign-in flow cannot answer "did it take" from the form page it started
- * on. This says when the page has moved past that point: either the site
- * accepted us (a sign-out link, or its own success page), or it put the form
- * back, or it wants a code. The stamp keeps the form page from counting as a
- * verdict while the submission is still on its way. */
-private const val LOGIN_SETTLED =
-    "(function(){try{var m=sessionStorage.getItem('lcs');if(!m)return false;" +
-        "if(Date.now()-Number(m)<3000)return false;}catch(e){return false;}" +
-        "var t=document.title||'',h=document.body?document.body.innerText:'';" +
-        "if(t.indexOf('请稍候')>=0||/正在验证|安全验证|Just a moment/i.test(t))return false;" +
-        "if(/登录成功/.test(t)||/退出登录/.test(h))return true;" +
-        "if(document.querySelector('input[type=password]'))return true;" +
-        "if(/验证码/.test(h))return true;return false;})()"
 import org.htmlunit.corejs.javascript.TopLevel
 import org.htmlunit.corejs.javascript.VarScope
 import java.net.URI
@@ -57,6 +44,20 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 import java.io.StringWriter
 import java.io.UnsupportedEncodingException
+
+/** The sign-in flow cannot answer "did it take" from the form page it started
+ * on. This says when the page has moved past that point: either the site
+ * accepted us (a sign-out link, or its own success page), or it put the form
+ * back, or it wants a code. The stamp keeps the form page from counting as a
+ * verdict while the submission is still on its way. */
+private const val LOGIN_SETTLED =
+    "(function(){try{var m=sessionStorage.getItem('lcs');if(!m)return false;" +
+        "if(Date.now()-Number(m)<3000)return false;}catch(e){return false;}" +
+        "var t=document.title||'',h=document.body?document.body.innerText:'';" +
+        "if(t.indexOf('请稍候')>=0||/正在验证|安全验证|Just a moment/i.test(t))return false;" +
+        "if(/登录成功/.test(t)||/退出登录/.test(h))return true;" +
+        "if(document.querySelector('input[type=password]'))return true;" +
+        "if(/验证码/.test(h))return true;return false;})()"
 
 internal data class SourceReply(val url: String, val body: String, val status: Int = 200,
     val headers: Map<String, List<String>> = emptyMap(), val data: ByteArray? = null,

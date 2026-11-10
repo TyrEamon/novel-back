@@ -32,8 +32,8 @@ import javax.crypto.spec.GCMParameterSpec
 
 class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.ActivityResultListener {
     /** One build that reports what the background sign-in actually saw. The
-     * sentence it appends is for diagnosis only; flip to false to drop it. */
-    private val loginDebug = true
+     * sentence it appends is for diagnosis only; flip to true to bring it back. */
+    private val loginDebug = false
     private lateinit var context: Context
     private var channel: MethodChannel? = null
     @Volatile private var environment: Map<String, Any?> = emptyMap()

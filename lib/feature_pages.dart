@@ -185,9 +185,6 @@ class WenkuAccountPage extends StatefulWidget {
 }
 
 class _WenkuAccountPageState extends State<WenkuAccountPage> {
-  final _username = TextEditingController();
-  final _password = TextEditingController();
-  bool _obscure = true;
   bool _canCheckIn = false;
   @override
   void initState() {
@@ -214,13 +211,6 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
     });
   }
 
-  @override
-  void dispose() {
-    _username.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
   Future<void> _run(Future<void> Function() work, String success) async {
     if (widget.account.busy) return;
     FocusManager.instance.primaryFocus?.unfocus();
@@ -232,66 +222,24 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
     }
   }
 
-  Future<void> _login() async {
-    final account = widget.account;
-    if (account.busy) return;
-    // The site only accepts its password from a page it served itself, and its
-    // challenge cannot be answered by a plain post, so the sign-in runs the
-    // real form inside the source's own WebView. Typing here is the shortcut;
-    // opening the page stays available when a login needs a captcha.
-    if (!account.canPasswordLogin) return _openWebLogin();
-    if (_username.text.trim().isEmpty || _password.text.isEmpty) {
-      showNovelFeedback(context, '请输入账号与密码');
-      return;
-    }
-    FocusManager.instance.primaryFocus?.unfocus();
-    await account.signIn(_username.text.trim(), _password.text);
-    if (!mounted) return;
-    // The account holds the failure in its own live region, so the toast only
-    // speaks when the site actually took the password.
-    if (account.authenticated && account.error == null) {
-      showNovelFeedback(context, '登录成功');
-      _password.clear();
-    }
-  }
-
   Future<void> _openWebLogin() async {
     final sources = sourceRepositoryOf(widget.repository);
     final bundled = sources?.store.sources
         .where((source) => source.key == 'https://www.wenku8.net')
         .toList();
-    if (sources != null && bundled != null && bundled.isNotEmpty) {
-      FocusManager.instance.primaryFocus?.unfocus();
-      await pushNovelPage<void>(
-        context,
-        SourceLoginPage(source: bundled.first, repository: sources),
-        reduceMotion: widget.state.reduceMotion,
-      );
-      // The session that just opened the site's own pages is the one the
-      // account card reads, so the card updates without a second tap.
-      await widget.account.refreshProfile();
+    if (sources == null || bundled == null || bundled.isEmpty) {
+      showNovelFeedback(context, '没有可用的文库书源');
       return;
     }
-    final account = widget.account;
-    if (account.busy) return;
-    final revision = account.sessionRevision;
     FocusManager.instance.primaryFocus?.unfocus();
-    try {
-      await account.login(_username.text, _password.text);
-      if (mounted) showNovelFeedback(context, '登录成功');
-    } catch (_) {
-      // The account's live region displays the concrete failure.
-    } finally {
-      if (mounted) {
-        // Finish before clearing: the system must see the submitted password.
-        // A successful API login still counts if only profile loading failed.
-        TextInput.finishAutofillContext(
-          shouldSave:
-              account.authenticated && account.sessionRevision != revision,
-        );
-        _password.clear();
-      }
-    }
+    await pushNovelPage<void>(
+      context,
+      SourceLoginPage(source: bundled.first, repository: sources),
+      reduceMotion: widget.state.reduceMotion,
+    );
+    // The session that just opened the site's own pages is the one the account
+    // card reads, so the card updates without a second tap.
+    await widget.account.refreshProfile();
   }
 
   Future<void> _logout() async {
@@ -347,79 +295,16 @@ class _WenkuAccountPageState extends State<WenkuAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // The form is a shortcut into the site's own login page:
-                        // the fields are handed to that page's form inside the
-                        // source WebView, never posted from here.
-                        if (account.canPasswordLogin) ...[
-                          TextField(
-                            key: const ValueKey('account-username'),
-                            onTap: () =>
-                                AppHaptics.play(context, HapticCue.selection),
-                            onTapAlwaysCalled: true,
-                            controller: _username,
-                            enabled: !account.busy,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const [AutofillHints.username],
-                            maxLength: 254,
-                            decoration: InputDecoration(
-                              labelText: appText(context, '用户名 / 邮箱'),
-                              hintText: appText(context, '请输入用户名或邮箱'),
-                              counterText: '',
-                            ),
+                        // The site answers its challenge only for a page a
+                        // person is looking at, so the password is typed on the
+                        // site's own login page and never passes through here.
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: AppText(
+                            '登录由文库自己的登录页完成，点下面按钮会打开官方登录页；登录完成返回后，书架、书评与这里的资料都会带上登录态。',
+                            style: TextStyle(fontSize: 13, height: 1.5),
                           ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            key: const ValueKey('account-password'),
-                            onTap: () =>
-                                AppHaptics.play(context, HapticCue.selection),
-                            onTapAlwaysCalled: true,
-                            controller: _password,
-                            enabled: !account.busy,
-                            obscureText: _obscure,
-                            autocorrect: false,
-                            enableSuggestions: false,
-                            keyboardType: TextInputType.visiblePassword,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const [AutofillHints.password],
-                            smartDashesType: SmartDashesType.disabled,
-                            smartQuotesType: SmartQuotesType.disabled,
-                            maxLength: 30,
-                            onSubmitted: (_) => _login(),
-                            decoration: InputDecoration(
-                              labelText: appText(context, '密码'),
-                              hintText: appText(context, '请输入密码'),
-                              counterText: '',
-                              suffixIcon: IconButton(
-                                tooltip: _obscure ? '显示密码' : '隐藏密码',
-                                icon: ArchiveIcon(
-                                  _obscure
-                                      ? CupertinoIcons.eye
-                                      : CupertinoIcons.eye_slash,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _obscure = !_obscure),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ] else
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 16),
-                            child: AppText(
-                              '登录由文库自己的登录页完成，点下面按钮会打开官方登录页；登录完成返回后，书架、书评与这里的资料都会带上登录态。',
-                              style: TextStyle(fontSize: 13, height: 1.5),
-                            ),
-                          ),
-                        if (account.canPasswordLogin) ...[
-                          GlassTextButton(
-                            key: const ValueKey('account-login'),
-                            onPressed: account.busy ? null : _login,
-                            child: const AppText('登录'),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
+                        ),
                         GlassTextButton(
                           key: const ValueKey('account-login-web'),
                           onPressed: account.busy ? null : _openWebLogin,
