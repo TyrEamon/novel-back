@@ -31,6 +31,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, PluginRegistry.ActivityResultListener {
+    /** One build that reports what the background sign-in actually saw. The
+     * sentence it appends is for diagnosis only; flip to false to drop it. */
+    private val loginDebug = true
     private lateinit var context: Context
     private var channel: MethodChannel? = null
     @Volatile private var environment: Map<String, Any?> = emptyMap()
@@ -260,8 +263,8 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 val key = source["bookSourceUrl"] as String
                 val username = (args["username"] as? String).orEmpty().trim()
                 val password = (args["password"] as? String).orEmpty()
-                check(username.isNotBlank() && password.isNotBlank()) { "请输入账号与密码" }
-                check(accountRunning.add(key)) { "书源账号操作正在进行，请稍后重试" }
+                if (username.isBlank() || password.isBlank()) throw SourceAccountFailure("请输入账号与密码")
+                if (!accountRunning.add(key)) throw SourceAccountFailure("书源账号操作正在进行，请稍后重试")
                 background(result) {
                     val id = java.util.UUID.randomUUID().toString()
                     try {
@@ -274,18 +277,31 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                         )
                         when {
                             submit.body.contains("FORM_MISSING") ->
-                                throw IllegalStateException("登录页没有找到密码输入框，请改用官网登录")
+                                throw SourceAccountFailure("登录页没有找到密码输入框，请改用官网登录")
                             submit.body.contains("CAPTCHA") ->
-                                throw IllegalStateException("文库登录页需要验证码，请改用官网登录")
+                                throw SourceAccountFailure("文库登录页需要验证码，请改用官网登录")
                         }
                         // The submitted form navigates on its own; reading the
                         // profile page afterwards is what tells the session apart
                         // from a bounced-back login form.
                         val landing = run.web!!.invoke(engine.loginProbeRequest())
                         val signedIn = landing.body.contains("退出登录")
-                        if (!signedIn) throw IllegalStateException(
-                            "登录未成功：请确认账号与密码；若文库此时要求验证码，请改用官网登录"
-                        )
+                        if (!signedIn) {
+                            val seen = if (!loginDebug) "" else buildString {
+                                append("\n[诊断 提交=").append(submit.body.trim().take(24))
+                                append(" 表单=")
+                                append(if (landing.body.contains("type=\"password\"") || landing.body.contains("type=password")) "在" else "无")
+                                append(" 验证码=").append(if (landing.body.contains("验证码")) "有" else "无")
+                                append(" 标题=").append(
+                                    Regex("<title>(.*?)</title>", RegexOption.DOT_MATCHES_ALL)
+                                        .find(landing.body)?.groupValues?.get(1)?.trim()?.take(40).orEmpty()
+                                )
+                                append(" 长度=").append(landing.body.length).append(']')
+                            }
+                            throw SourceAccountFailure(
+                                "登录未成功：请确认账号与密码；若文库此时要求验证码，请改用官网登录$seen"
+                            )
+                        }
                         SourceAccountState.verified(run.state, true)
                         saveSession(key)
                         main.post { channel?.invokeMethod("sessionUpdated", mapOf("source" to key)) }

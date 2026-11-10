@@ -1794,7 +1794,12 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                   name.dispatchEvent(new Event(kind, {bubbles:true}));
                   secret.dispatchEvent(new Event(kind, {bubbles:true}));
                 });
-                if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+                // Clicking the real button carries its name/value pair; a bare
+                // submit() can leave the server without the field it keys on.
+                var go = form.querySelector('input[type=submit], button[type=submit], button');
+                if (go) { go.click(); }
+                else if (form.requestSubmit) { form.requestSubmit(); }
+                else { form.submit(); }
               }
               act();
             })();
