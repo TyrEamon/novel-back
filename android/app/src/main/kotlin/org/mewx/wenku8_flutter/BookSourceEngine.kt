@@ -23,6 +23,20 @@ import org.htmlunit.corejs.javascript.ContextFactory
 import org.htmlunit.corejs.javascript.Scriptable
 import org.htmlunit.corejs.javascript.ScriptableObject
 import org.htmlunit.corejs.javascript.Undefined
+
+/** The sign-in flow cannot answer "did it take" from the form page it started
+ * on. This says when the page has moved past that point: either the site
+ * accepted us (a sign-out link, or its own success page), or it put the form
+ * back, or it wants a code. The stamp keeps the form page from counting as a
+ * verdict while the submission is still on its way. */
+private const val LOGIN_SETTLED =
+    "(function(){try{var m=sessionStorage.getItem('lcs');if(!m)return false;" +
+        "if(Date.now()-Number(m)<3000)return false;}catch(e){return false;}" +
+        "var t=document.title||'',h=document.body?document.body.innerText:'';" +
+        "if(t.indexOf('请稍候')>=0||/正在验证|安全验证|Just a moment/i.test(t))return false;" +
+        "if(/登录成功/.test(t)||/退出登录/.test(h))return true;" +
+        "if(document.querySelector('input[type=password]'))return true;" +
+        "if(/验证码/.test(h))return true;return false;})()"
 import org.htmlunit.corejs.javascript.TopLevel
 import org.htmlunit.corejs.javascript.VarScope
 import java.net.URI
@@ -55,7 +69,11 @@ internal data class SourceWebRequest(val url: String, val html: String? = null, 
     val sourceRegex: String? = null, val interactive: Boolean = false, val clearProfile: Boolean = false,
     val overrideUrlRegex: String? = null, val cacheFirst: Boolean = false,
     val title: String? = null, val captureBody: Boolean = false,
-    val browserSheet: Boolean = false, val browserConfig: String? = null)
+    val browserSheet: Boolean = false, val browserConfig: String? = null,
+    /** A page that has merely finished loading is not necessarily the answer: a
+     * challenge interstitial, or the form we just submitted, is still "in
+     * progress". This JS expression says when the page can settle the question. */
+    val until: String? = null)
 internal class SourceRun(
     val fetch: (String, String, Map<String, String>, ByteArray?) -> SourceReply,
     val cancelled: () -> Boolean = { false },
@@ -1739,6 +1757,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             headers = requestHeaders(),
             delay = if (login == null) 0L else 2_500L,
             interactive = login == null,
+            until = if (login == null) null else LOGIN_SETTLED,
         )
     }
 
@@ -1764,6 +1783,9 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
             (function(){
               var tries = 0;
               function act(){
+                // The renderer keeps asking until the page settles, and every ask
+                // re-runs this script; a second submission would lock the account.
+                try { if (sessionStorage.getItem('lcs')) return; } catch (e) {}
                 var secret = document.querySelector('input[type=password]');
                 var form = secret && secret.form;
                 var name = form && form.querySelector('input[type=text], input[type=email], input:not([type])');
@@ -1794,6 +1816,7 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
                   name.dispatchEvent(new Event(kind, {bubbles:true}));
                   secret.dispatchEvent(new Event(kind, {bubbles:true}));
                 });
+                try { sessionStorage.setItem('lcs', String(Date.now())); } catch (e) {}
                 // Clicking the real button carries its name/value pair; a bare
                 // submit() can leave the server without the field it keys on.
                 var go = form.querySelector('input[type=submit], button[type=submit], button');
@@ -1803,6 +1826,8 @@ internal class BookSourceEngine(source: Map<String, Any?>, private val run: Sour
               }
               act();
             })();
+            // Small on purpose: the renderer re-runs this while it waits, and
+            // reads the settled page itself once the gate opens.
             'PENDING'
         """.trimIndent()
     }

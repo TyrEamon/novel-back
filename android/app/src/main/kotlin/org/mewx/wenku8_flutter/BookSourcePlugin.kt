@@ -275,32 +275,27 @@ class BookSourcePlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                         val submit = run.web!!.invoke(
                             engine.loginWebRequest(mapOf("username" to username, "password" to password))
                         )
-                        when {
-                            submit.body.contains("FORM_MISSING") ->
-                                throw SourceAccountFailure("登录页没有找到密码输入框，请改用官网登录")
-                            submit.body.contains("CAPTCHA") ->
-                                throw SourceAccountFailure("文库登录页需要验证码，请改用官网登录")
-                        }
-                        // The submitted form navigates on its own; reading the
-                        // profile page afterwards is what tells the session apart
-                        // from a bounced-back login form.
-                        val landing = run.web!!.invoke(engine.loginProbeRequest())
-                        val signedIn = landing.body.contains("退出登录")
+                        // The render only comes back once the page can answer, so
+                        // this body is where the submission landed, not the form
+                        // it was typed into.
+                        val landing = submit
+                        val signedIn = landing.body.contains("退出登录") ||
+                            landing.body.contains("登录成功")
                         if (!signedIn) {
+                            if (landing.body.contains("验证码"))
+                                throw SourceAccountFailure("文库登录页需要验证码，请改用官网登录")
                             val seen = if (!loginDebug) "" else buildString {
-                                append("\n[诊断 提交=").append(submit.body.trim().take(24))
-                                append(" 表单=")
-                                append(if (landing.body.contains("type=\"password\"") || landing.body.contains("type=password")) "在" else "无")
+                                append("\n[诊断 落地=")
+                                append(if (landing.body.contains("type=\"password\"") || landing.body.contains("type=password")) "仍是表单" else "无表单")
                                 append(" 验证码=").append(if (landing.body.contains("验证码")) "有" else "无")
                                 append(" 标题=").append(
                                     Regex("<title>(.*?)</title>", RegexOption.DOT_MATCHES_ALL)
                                         .find(landing.body)?.groupValues?.get(1)?.trim()?.take(40).orEmpty()
                                 )
-                                append(" 长度=").append(landing.body.length).append(']')
+                                append(" 长度=").append(landing.body.length)
+                                append(" 地址=").append(landing.url.take(70)).append(']')
                             }
-                            throw SourceAccountFailure(
-                                "登录未成功：请确认账号与密码；若文库此时要求验证码，请改用官网登录$seen"
-                            )
+                            throw SourceAccountFailure("登录未成功：请确认账号与密码$seen")
                         }
                         SourceAccountState.verified(run.state, true)
                         saveSession(key)

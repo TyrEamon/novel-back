@@ -205,7 +205,26 @@ internal class SourceWebRenderer(
                     val decoded = runCatching { Gson().fromJson(raw, Any::class.java) }.getOrNull()
                     val text = if (decoded is String) decoded else raw
                     if (text.toByteArray().size > 8 * 1024 * 1024) finish(error = "书源网页响应超过 8 MiB")
-                    else finish(body = text, url = view.url ?: request.url)
+                    else {
+                        val gate = request.until?.takeIf { it.isNotBlank() }
+                        if (gate == null) finish(body = text, url = view.url ?: request.url)
+                        else view.evaluateJavascript(
+                            "(function(){try{return ($gate)?'1':'0';}catch(e){return '0';}})()"
+                        ) { flag ->
+                            if (finished) return@evaluateJavascript
+                            val settled = runCatching { Gson().fromJson(flag, String::class.java) }
+                                .getOrNull() == "1"
+                            if (!settled) { main.postDelayed(this, 400); return@evaluateJavascript }
+                            view.evaluateJavascript("document.documentElement.outerHTML") { page ->
+                                if (finished) return@evaluateJavascript
+                                val html = runCatching {
+                                    Gson().fromJson(page, String::class.java)
+                                }.getOrNull()
+                                if (html.isNullOrEmpty()) main.postDelayed(this, 400)
+                                else finish(body = html, url = view.url ?: request.url)
+                            }
+                        }
+                    }
                 } else if (++retries <= 30) main.postDelayed(this, minOf(retries * 200L, 1000L))
                 else finish(error = "书源网页脚本未返回内容")
             }
@@ -298,7 +317,9 @@ internal class SourceWebRenderer(
             else view.loadUrl(request.url, request.headers.filterKeys { !it.equals("Cookie", true) })
         }
         attach?.invoke(view)
-        main.postDelayed(timeout, if (attach == null) 28_000 else 10 * 60_000)
+        main.postDelayed(timeout, if (attach == null) {
+            if (request.until.isNullOrBlank()) 28_000 else 45_000
+        } else 10 * 60_000)
         // CookieManager.setCookie accepts ONE Set-Cookie value, not a Cookie
         // request header. Seed all pairs before allowing the document to run.
         val pairs = cookie.split(';').map { it.trim() }.filter { it.contains('=') }
